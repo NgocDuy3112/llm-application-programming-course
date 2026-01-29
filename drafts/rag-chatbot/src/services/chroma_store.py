@@ -14,9 +14,9 @@ class ChromaStore:
         collection = self.client.get_or_create_collection(name=collection_name)
 
         ids = [str(i) for i in range(len(data_points))]
-        embeddings = torch.stack([dp.embedding for dp in data_points]).cpu().numpy().tolist()
-        metadatas = [dp.document.metadata for dp in data_points]
-        documents = [dp.document.content for dp in data_points]
+        embeddings = torch.stack([dp["embedding"] for dp in data_points]).cpu().numpy().tolist()
+        metadatas = [dp["document"].metadata for dp in data_points]
+        documents = [dp["document"].content for dp in data_points]
 
         collection.add(
             ids=ids,
@@ -37,7 +37,7 @@ class ChromaStore:
         query_embedding_np = query_embedding.cpu().numpy().tolist()
         results = collection.query(
             query_embeddings=[query_embedding_np],
-            include=["documents", "metadatas", "ids"],
+            include=["documents", "metadatas"],
             n_results=n_results,
             **kwargs
         )
