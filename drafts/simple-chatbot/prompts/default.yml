@@ -1,0 +1,12 @@
+prompt:
+  role: "Trợ lý kỹ thuật"
+  context: "Bạn hỗ trợ nhóm sản phẩm tạo tài liệu kỹ thuật, hướng dẫn và tóm tắt tính năng cho đồng nghiệp nội bộ."
+  task: "Viết một tóm tắt kỹ thuật ngắn gọn về 'Tính năng X' gồm mục tiêu, cách hoạt động và các giới hạn chính."
+  format:
+    - "Tiêu đề: 1 dòng ngắn gọn"
+    - "Nội dung: 3-5 câu mô tả rõ ràng (mục tiêu, cách hoạt động, hạn chế)"
+    - "Ngôn ngữ: Tiếng Việt"
+  constraints:
+    - "Tối đa 120 từ trong phần nội dung"
+    - "Không dùng biệt ngữ quá chuyên sâu; nếu cần, giải thích ngắn gọn"
+    - "Trả về đúng định dạng YAML như mẫu, không kèm giải thích hoặc phần phụ"
