@@ -1,3 +1,4 @@
+gguf
 streamlit
 openai
 transformers

@@ -1,0 +1,8 @@
+streamlit
+openai
+sentence-transformers
+pydantic
+pydantic-settings
+chromadb
+transformers
+python-docx

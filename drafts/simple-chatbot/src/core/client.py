@@ -1,10 +1,11 @@
 from openai import OpenAI
+from transformers import BitsAndBytesConfig, pipeline
 from enum import Enum
 
 from ..utils.helpers import map_dict_to_pydantic, define_api_base_url
 
 
-class StreamingState(str, Enum):
+class OpenAIStreamingState(str, Enum):
     TEXT_STREAMING_IN_PROGRESS = "response.output_text.delta"
     TEXT_STREAMING_DONE = "response.output_text.done"
     REASONING_IN_PROGRESS = "response.reasoning_text.delta"
@@ -21,7 +22,8 @@ class OpenAIStandardClient:
         base_url: str | None = None
     ):
         self.base_url = base_url if base_url else define_api_base_url(model_provider)
-        self.client = OpenAI(api_key=api_key, base_url=self.base_url)
+        self.api_key = api_key if api_key else "api-key-not-provided"
+        self.client = OpenAI(api_key=self.api_key, base_url=self.base_url)
         self.model = model
 
     def create_response(self, input, stream: bool, **kwargs):
@@ -35,13 +37,13 @@ class OpenAIStandardClient:
             return response.output_text
         else:
             for event in response:
-                if event.type == StreamingState.TEXT_STREAMING_IN_PROGRESS:
+                if event.type == OpenAIStreamingState.TEXT_STREAMING_IN_PROGRESS:
                     yield {'type': 'text', 'content': event.delta}
-                if event.type == StreamingState.TEXT_STREAMING_DONE:
+                if event.type == OpenAIStreamingState.TEXT_STREAMING_DONE:
                     break
-                if event.type == StreamingState.REASONING_IN_PROGRESS:
+                if event.type == OpenAIStreamingState.REASONING_IN_PROGRESS:
                     yield {'type': 'reasoning', 'content': event.delta}
-                if event.type == StreamingState.REASONING_DONE:
+                if event.type == OpenAIStreamingState.REASONING_DONE:
                     continue
 
     def create_structured_response(self, input, schema: dict, **kwargs):
@@ -57,5 +59,8 @@ class OpenAIStandardClient:
 
 
 class HuggingFaceClient:
-    def __init__(self, model: str):
-        pass
+    def __init__(self, model: str, **kwargs):
+        self.pipeline = pipeline(model, device_map="auto", **kwargs)
+
+    def create_response(self, input, **kwargs):
+        return self.pipeline(input, **kwargs)
