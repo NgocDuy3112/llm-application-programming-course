@@ -1,8 +1,10 @@
 import json
 import streamlit as st
-from src.core.client import LLMClient
+from src.core.client import OpenAIStandardClient
 from src.utils.settings import *
 
+
+THINKING_PROCESS_DISPLAY_STRING = "🧠 Quá trình suy luận"
 
 
 
@@ -27,37 +29,50 @@ def main():
         st.session_state["streaming_mode"] = True
     with st.sidebar:
         model_provider = st.sidebar.selectbox(
-            "Select Provider",
-            options=["OpenAI", "Groq", "Gemini", "Ollama", "Huggingface"],
+            "Chọn nhà cung cấp mô hình",
+            options=["Groq", "Gemini", "Ollama", "Huggingface"],
             index=0
         )
         if model_provider in NEED_API_KEY_PROVIDERS:
             api_key = st.sidebar.text_input(
-                "API Key",
+                "Nhập API Key",
                 value=settings.API_KEY,
                 type="password"
             )
         model = st.sidebar.selectbox(
-            "Select Model",
+            "Chọn mô hình",
             options=MODELS_LIST.get(model_provider, []),
             placeholder="Không có mô hình nào khả dụng",
             index=0
         )
-            
+        temperature = st.sidebar.slider(
+            "Temperature",
+            min_value=0.0,
+            max_value=1.0,
+            value=0.7,
+            step=0.1
+        )
+        max_output_tokens = st.sidebar.slider(
+            "Số tokens tối đa",
+            min_value=1,
+            max_value=2048,
+            value=512,
+            step=1
+        )
         custom_instructions = st.sidebar.text_area(
-            "Custom Instructions (optional)",
+            "Chỉ dẫn tùy chỉnh (tùy chọn)",
             value="",
             height=200
         )
         streaming_mode = st.sidebar.checkbox(
-            "Enable Streaming Mode",
+            "Bật chế độ Streaming",
             value=st.session_state["streaming_mode"],
             key="streaming_mode_widget",
             disabled=st.session_state.get("structured_mode_widget", False)
         )
         structured_output_mode = st.sidebar.checkbox(
-            "Enable Structured Output",
-            value=False,
+            "Bật chế độ Đầu ra Cấu trúc",
+            value=st.session_state.get("structured_mode_widget", False),
             key="structured_mode_widget",
             on_change=lambda: st.session_state.update(streaming_mode=False) if st.session_state["structured_mode_widget"] else None
         )
@@ -66,20 +81,31 @@ def main():
             # Disable streaming mode checkbox
             st.session_state["streaming_mode"] = False
             output_schema_text = st.text_area(
-                "Output Schema (JSON format)",
+                "Lược đồ Đầu ra (định dạng JSON)",
                 value='{"field_name": { "type": "str", "default": null, "description": "Description of the field" }}',
                 height=300,
             )
             try:
                 output_schema = json.loads(output_schema_text)
-                st.success("Valid JSON schema")
+                st.success("Lược đồ hợp lệ!")
             except json.JSONDecodeError:
-                st.error("Invalid JSON format")
-        client = LLMClient(
+                st.error("Định dạng JSON không hợp lệ. Vui lòng kiểm tra lại.")
+        client = OpenAIStandardClient(
             model=model, 
             model_provider=model_provider, 
             api_key=api_key, 
         )
+    # Render existing chat history in main area
+    for i, msg in enumerate(st.session_state.get("chat_history", [])):
+        role = msg.get("role", "user")
+        content = msg.get("content", "")
+        # show a thinking expander above each assistant message (collapsed)
+        if role == "assistant":
+            with st.expander(THINKING_PROCESS_DISPLAY_STRING, expanded=False):
+                st.write("")
+        with st.chat_message(role):
+            st.markdown(content)
+
     user_input = st.chat_input("Type your message here...")
     if user_input:
         with st.chat_message("user"):
@@ -89,25 +115,46 @@ def main():
             response = client.create_structured_response(
                 schema=output_schema,
                 input=st.session_state["chat_history"],
-                stream=False,
-                instructions=custom_instructions
+                stream=streaming_mode,
+                instructions=custom_instructions,
+                max_output_tokens=max_output_tokens,
+                temperature=temperature
             )
         else:
             response = client.create_response(
                 input=st.session_state["chat_history"],
                 stream=streaming_mode,
-                instructions=custom_instructions
+                instructions=custom_instructions,
+                max_output_tokens=max_output_tokens,
+                temperature=temperature
             )
+
         with st.chat_message("assistant"):
-            # if streaming_mode:
-            #     full_response = ""
-            #     for chunk in response:
-            #         delta = chunk.choices[0].delta.get("content", "")
-            #         full_response += delta
-            #         st.markdown(full_response + "▌")
-            #     st.markdown(full_response)
-            # else:
+            if streaming_mode:
+                thinking_expander = st.expander(THINKING_PROCESS_DISPLAY_STRING, expanded=False)
+                thinking_ph = thinking_expander.empty()
+                message_ph = st.empty()
+                full_text = ""
+                full_reasoning = ""
+                for chunk in response:
+                    ctype = chunk.get('type') if isinstance(chunk, dict) else 'text'
+                    content = chunk.get('content') if isinstance(chunk, dict) else str(chunk)
+                    if ctype == 'reasoning':
+                        full_reasoning += content
+                        thinking_ph.markdown(full_reasoning)
+                    else:
+                        full_text += content
+                        message_ph.markdown(full_text + "▌")
+
+                # finalize
+                if full_reasoning:
+                    thinking_ph.markdown(full_reasoning)
+                message_ph.markdown(full_text)
+                # store only assistant message in history (do not store reasoning)
+                st.session_state["chat_history"].append({"role": "assistant", "content": full_text})
+            else:
                 st.markdown(response)
+                st.session_state["chat_history"].append({"role": "assistant", "content": response})
 
 
 
