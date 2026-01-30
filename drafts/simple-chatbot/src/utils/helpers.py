@@ -30,12 +30,24 @@ def map_dict_to_pydantic(schema: dict) -> BaseModel:
         "str": str,
         "int": int,
         "float": float,
-        "bool": bool
+        "bool": bool,
     }
+
     for field_name, field_info in schema.items():
-        field_type = type_mapping.get(field_info.get("type"), str)
-        default_value = field_info.get("default", ...)
-        description = field_info.get("description", "")
+        # Hỗ trợ 2 dạng:
+        # 1. Đầy đủ: {"field": {"type": "str", "default": ..., "description": "..."}}
+        # 2. Rút gọn: {"field": "str"}
+        if isinstance(field_info, dict):
+            type_key = field_info.get("type", "str")
+            default_value = field_info.get("default", ...)
+            description = field_info.get("description", "")
+        else:
+            # Dạng rút gọn: chỉ cung cấp kiểu dưới dạng string
+            type_key = str(field_info)
+            default_value = ...
+            description = ""
+
+        field_type = type_mapping.get(type_key, str)
         fields[field_name] = (field_type, Field(default_value, description=description))
     DynamicModel = create_model('DynamicModel', **fields)
     return DynamicModel

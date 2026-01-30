@@ -40,7 +40,7 @@ def sidebar():
             min_value=0.0,
             max_value=1.0,
             value=0.7,
-            step=0.1,
+            step=0.05,
         )
 
         max_output_tokens = st.sidebar.slider(
@@ -58,14 +58,14 @@ def sidebar():
         )
 
         streaming_mode = st.sidebar.checkbox(
-            "Bật chế độ Streaming",
+            "Chế độ Streaming",
             value=st.session_state["streaming_mode"],
             key="streaming_mode_widget",
             disabled=st.session_state.get("structured_mode_widget", False),
         )
 
         structured_output_mode = st.sidebar.checkbox(
-            "Bật chế độ Đầu ra Cấu trúc",
+            "Chế độ định dạng theo cấu trúc",
             value=st.session_state.get("structured_mode_widget", False),
             key="structured_mode_widget",
             on_change=(
@@ -80,16 +80,31 @@ def sidebar():
             # Disable streaming mode checkbox
             st.session_state["streaming_mode"] = False
             streaming_mode = False
-            output_schema_text = st.text_area(
-                "Lược đồ Đầu ra (định dạng JSON)",
-                value='{"field_name": { "type": "str", "default": null, "description": "Description of the field" }}',
-                height=300,
+            json_file = st.file_uploader(
+                "Tải lên file lược đồ (JSON)",
+                type=["json"],
             )
-            try:
-                output_schema = json.loads(output_schema_text)
-                st.success("Lược đồ hợp lệ!")
-            except json.JSONDecodeError:
-                st.error("Định dạng JSON không hợp lệ. Vui lòng kiểm tra lại.")
+
+            if json_file is not None:
+                # Ưu tiên đọc lược đồ từ file JSON
+                try:
+                    file_content = json_file.read().decode("utf-8")
+                    output_schema = json.loads(file_content)
+                    st.success("Đọc lược đồ từ file JSON thành công!")
+                except (UnicodeDecodeError, json.JSONDecodeError):
+                    st.error("Không đọc được file JSON. Vui lòng kiểm tra lại nội dung.")
+            else:
+                # Fallback: nhập trực tiếp bằng text area
+                output_schema_text = st.text_area(
+                    "Lược đồ Đầu ra (định dạng JSON)",
+                    value='{"field_name": { "type": "str", "default": null, "description": "Description of the field" }}',
+                    height=300,
+                )
+                try:
+                    output_schema = json.loads(output_schema_text)
+                    st.success("Lược đồ hợp lệ!")
+                except json.JSONDecodeError:
+                    st.error("Định dạng JSON không hợp lệ. Vui lòng kiểm tra lại.")
 
         client = OpenAIStandardClient(
             model=model,
@@ -175,7 +190,7 @@ def main():
                     st.write("")
             st.markdown(content)
 
-    user_input = st.chat_input("Type your message here...")
+    user_input = st.chat_input("Nhập tin nhắn của bạn ở đây...")
     if user_input:
         with st.chat_message("user"):
             st.markdown(user_input)
@@ -188,60 +203,67 @@ def main():
         max_output_tokens = sidebar_state["max_output_tokens"]
         temperature = sidebar_state["temperature"]
 
-        spinner_text = "Vui lòng chờ trong giây lát..."
-
-        # Non-streaming: show spinner while waiting for the full response.
-        if not streaming_mode:
-            with st.spinner(spinner_text):
-                if structured_output_mode:
-                    response = client.create_structured_response(
+        spinner_text = "Đang phản hồi..."
+        # Chế độ structured output: luôn non-stream, hiển thị đẹp bằng JSON
+        if structured_output_mode:
+            with st.chat_message("assistant"):
+                with st.spinner(spinner_text):
+                    structured_response = client.create_structured_response(
                         schema=output_schema,
                         input=st.session_state["chat_history"],
-                        stream=streaming_mode,
-                        instructions=custom_instructions,
-                        max_output_tokens=max_output_tokens,
-                        temperature=temperature,
-                    )
-                else:
-                    response = client.create_response(
-                        input=st.session_state["chat_history"],
-                        stream=streaming_mode,
+                        stream=False,
                         instructions=custom_instructions,
                         max_output_tokens=max_output_tokens,
                         temperature=temperature,
                     )
 
-            with st.chat_message("assistant"):
-                st.markdown(response)
-            st.session_state["chat_history"].append({"role": "assistant", "content": response})
+                # Chuyển Pydantic model sang dict (nếu có) để hiển thị đẹp
+                if hasattr(structured_response, "model_dump"):
+                    structured_data = structured_response.model_dump()
+                elif hasattr(structured_response, "dict"):
+                    structured_data = structured_response.dict()
+                else:
+                    structured_data = structured_response
+                st.json(structured_data)
+
+            # Lưu lại dạng JSON string để hiển thị lại trong lịch sử
+            st.session_state["chat_history"].append(
+                {
+                    "role": "assistant",
+                    "content": json.dumps(structured_data, ensure_ascii=False, indent=2),
+                }
+            )
             return
 
-        # Streaming: show spinner until the first chunk arrives.
-        if structured_output_mode:
-            response = client.create_structured_response(
-                schema=output_schema,
-                input=st.session_state["chat_history"],
-                stream=streaming_mode,
-                instructions=custom_instructions,
-                max_output_tokens=max_output_tokens,
-                temperature=temperature,
-            )
-        else:
+        # Chế độ normal: giữ nguyên behavior streaming / non-streaming
+        if streaming_mode:
             response = client.create_response(
                 input=st.session_state["chat_history"],
-                stream=streaming_mode,
+                stream=True,
                 instructions=custom_instructions,
                 max_output_tokens=max_output_tokens,
                 temperature=temperature,
             )
 
-        with st.chat_message("assistant"):
-            full_text = stream(response, spinner_text)
-            if full_text == "":
-                st.session_state["chat_history"].append({"role": "assistant", "content": ""})
-                return
+            with st.chat_message("assistant"):
+                full_text = stream(response, spinner_text)
+                if full_text == "":
+                    st.session_state["chat_history"].append({"role": "assistant", "content": ""})
+                    return
+        else:
+            with st.spinner(spinner_text):
+                full_text = client.create_response(
+                    input=st.session_state["chat_history"],
+                    stream=False,
+                    instructions=custom_instructions,
+                    max_output_tokens=max_output_tokens,
+                    temperature=temperature,
+                )
 
-        # store only assistant message in history (do not store reasoning)
+            with st.chat_message("assistant"):
+                st.markdown(full_text)
+
+        # Lưu lại message assistant (chỉ phần text, không reasoning)
         st.session_state["chat_history"].append({"role": "assistant", "content": full_text})
 
 
