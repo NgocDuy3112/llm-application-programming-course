@@ -1,13 +1,13 @@
-"""Streamlit UI handlers and utilities"""
-
 import json
-from typing import Any, Generator
+from collections.abc import Generator
 import streamlit as st
 
 from src.core.exceptions import ChatbotError, APIKeyError, ValidationError
 from logger import ChatbotLogger
 
-logger = ChatbotLogger.get_logger("ui_handlers")
+
+
+logger = ChatbotLogger.get_logger("streamlit_handlers")
 
 
 THINKING_PROCESS_DISPLAY_STRING = "🧠 Quá trình suy luận"

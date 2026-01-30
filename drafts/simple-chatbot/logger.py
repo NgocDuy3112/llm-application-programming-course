@@ -2,6 +2,7 @@ import logging
 import sys
 from datetime import datetime
 from pathlib import Path
+from logging.handlers import RotatingFileHandler
 
 
 class ChatbotLogger:
@@ -41,9 +42,9 @@ class ChatbotLogger:
         console_handler.setLevel(self.level)
         # Create logs directory if it doesn't exist
         self.log_dir.mkdir(exist_ok=True)
-        # File handler
+        # File handler with rotation
         log_file = self.log_dir / f"chatbot_{datetime.now().strftime('%Y%m%d')}.log"
-        file_handler = logging.FileHandler(log_file, encoding='utf-8')
+        file_handler = RotatingFileHandler(log_file, maxBytes=5_000_000, backupCount=5, encoding='utf-8')
         file_handler.setLevel(logging.DEBUG)
         # Format
         formatter = logging.Formatter(

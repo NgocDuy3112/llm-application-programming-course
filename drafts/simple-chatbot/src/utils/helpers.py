@@ -48,7 +48,10 @@ def map_dict_to_pydantic(schema: dict) -> BaseModel:
             default_value = ...
             description = ""
 
-        field_type = type_mapping.get(type_key, str)
+        try:
+            field_type = type_mapping[type_key]
+        except KeyError:
+            raise ValueError(f"Unsupported type '{type_key}' for field '{field_name}'")
         fields[field_name] = (field_type, Field(default_value, description=description))
     DynamicModel = create_model('DynamicModel', **fields)
     return DynamicModel
