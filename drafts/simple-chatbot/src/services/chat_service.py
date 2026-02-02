@@ -47,6 +47,9 @@ class ChatService:
             "temperature": temperature,
         }
         
+        # TODO #3: Implement logic to truncate `input_data` (History) 
+        # to keep only the last N messages or limit by total tokens
+        
         if mode == "structured":
             if not schema:
                 raise ValidationError("Schema không được để trống cho chế độ structured")

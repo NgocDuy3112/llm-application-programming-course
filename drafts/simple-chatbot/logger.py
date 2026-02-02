@@ -28,6 +28,8 @@ class ChatbotLogger:
         self.level = level
         self.log_dir = Path(log_dir)
         self._logger: logging.Logger | None = None
+
+        # TODO #5: Configure Structured Logging (JSON format) here
         self._setup()
     
     def _setup(self) -> None:

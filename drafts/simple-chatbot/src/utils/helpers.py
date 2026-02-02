@@ -12,6 +12,7 @@ def read_yml_file(file_path) -> dict:
     return prompt_data
 
 
+# TODO #2: Implement `calculate_cost(model, input_tokens, output_tokens)` function
 
 
 def map_dict_to_pydantic(schema: dict) -> BaseModel:

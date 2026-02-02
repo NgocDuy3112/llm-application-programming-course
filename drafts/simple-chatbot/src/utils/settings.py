@@ -10,6 +10,7 @@ settings = Settings()
 
 
 MODELS_LIST = {
+    # TODO #6: Enable OpenAI models and add 'gpt-4o' to the list
     # "OpenAI": ["SeaLLMs/SeaLLMs-v3-1.5B"],
     "Groq": ["openai/gpt-oss-20b", "openai/gpt-oss-safeguard-20b", "openai/gpt-oss-120b"],
     "Gemini": ["gemini-3-pro", "gemini-3-flash", "gemini-2.5-pro", "gemini-2.5-flash"],

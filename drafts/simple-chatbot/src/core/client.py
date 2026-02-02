@@ -51,6 +51,7 @@ class OpenAIStandardClient:
         
         if not stream:
             logger.debug("Non-streaming response completed")
+            # TODO #1: Return `usage` metadata (tokens) alongside output_text
             return response.output_text
         else:
             logger.debug("Starting streaming response")

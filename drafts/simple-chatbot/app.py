@@ -6,7 +6,6 @@ from src.services.chat_service import ChatService
 from src.ui.streamlit_handlers import (
     handle_response_error,
     stream_response,
-    display_response,
     render_chat_history,
     load_json_schema,
     parse_json_schema_text,

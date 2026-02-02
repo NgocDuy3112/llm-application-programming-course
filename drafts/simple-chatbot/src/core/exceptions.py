@@ -56,6 +56,8 @@ def handle_api_errors(
         def create_response(self, input, **kwargs):
             ...
     """
+    # TODO #4: Customize RateLimitError message to inform user about "Hạn mức Quota"
+    
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         def wrapper(*args, **kwargs) -> Any:
