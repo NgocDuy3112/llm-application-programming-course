@@ -51,10 +51,21 @@ class OpenAIStandardClient:
         
         if not stream:
             logger.debug("Non-streaming response completed")
-            # TODO #1: Return `usage` metadata (tokens) alongside output_text
             return response.output_text
         else:
             logger.debug("Starting streaming response")
+            # TODO #1: Implement streaming generator loop
+            # Solution:
+            # for event in response:
+            #     if event.type == OpenAIStreamingState.TEXT_STREAMING_IN_PROGRESS:
+            #         yield {'type': 'text', 'content': event.delta}
+            #     if event.type == OpenAIStreamingState.TEXT_STREAMING_DONE:
+            #         logger.debug("Streaming completed")
+            #         break
+            #     if event.type == OpenAIStreamingState.REASONING_IN_PROGRESS:
+            #         yield {'type': 'reasoning', 'content': event.delta}
+            #     if event.type == OpenAIStreamingState.REASONING_DONE:
+            #         continue
             for event in response:
                 if event.type == OpenAIStreamingState.TEXT_STREAMING_IN_PROGRESS:
                     yield {'type': 'text', 'content': event.delta}
@@ -79,6 +90,16 @@ class OpenAIStandardClient:
         
         logger.info(f"Creating structured response with schema: {list(schema.keys())}")
         
+        # TODO #5: Parse structured response using Pydantic model
+        # Solution:
+        # pydantic_model = map_dict_to_pydantic(schema)
+        # response = self.client.responses.parse(
+        #     model=self.model,
+        #     text_format=pydantic_model,
+        #     input=input,
+        #     **kwargs
+        # )
+        # return response.output_parsed
         try:
             pydantic_model = map_dict_to_pydantic(schema)
         except Exception as e:

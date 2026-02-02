@@ -56,7 +56,15 @@ def handle_api_errors(
         def create_response(self, input, **kwargs):
             ...
     """
-    # TODO #4: Customize RateLimitError message to inform user about "Hạn mức Quota"
+    # TODO #3: Handle RateLimitError and provide a friendly message
+    # Solution:
+    # except RateLimitError as e:
+    #     error_msg = f"Vượt quá giới hạn request. Vui lòng thử lại sau: {str(e)}"
+    #     if logger:
+    #         logger.warning(error_msg)
+    #     if reraise:
+    #         raise ChatbotError(error_msg) from e
+    #     return default_return
     
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
