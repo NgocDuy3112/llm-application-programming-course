@@ -1,15 +1,25 @@
+import json
+import functools
 import yaml
 from pydantic import BaseModel, Field, create_model
 from .settings import *
 
 
 
+@functools.lru_cache(maxsize=32)
 def read_yml_file(file_path) -> dict:
+    """Read a YAML file and cache results by file path.
+
+    Caching avoids repeated disk reads during Streamlit reruns.
+    """
     if not file_path.endswith('.yml') and not file_path.endswith('.yaml'):
         raise ValueError("The file must be a .yml or .yaml file")
     with open(file_path, 'r') as file:
         prompt_data = yaml.safe_load(file)
     return prompt_data
+
+
+_pydantic_model_cache: dict[str, BaseModel] = {}
 
 
 def map_dict_to_pydantic(schema: dict) -> BaseModel:
@@ -24,6 +34,13 @@ def map_dict_to_pydantic(schema: dict) -> BaseModel:
             ...
         }
     """
+    # Use a simple JSON-keyed cache to avoid rebuilding identical models
+    try:
+        cache_key = json.dumps(schema, sort_keys=True)
+    except TypeError:
+        cache_key = None
+    if cache_key and cache_key in _pydantic_model_cache:
+        return _pydantic_model_cache[cache_key]
     fields = {}
     type_mapping = {
         "str": str,
@@ -52,6 +69,8 @@ def map_dict_to_pydantic(schema: dict) -> BaseModel:
             raise ValueError(f"Unsupported type '{type_key}' for field '{field_name}'")
         fields[field_name] = (field_type, Field(default_value, description=description))
     DynamicModel = create_model('DynamicModel', **fields)
+    if cache_key is not None:
+        _pydantic_model_cache[cache_key] = DynamicModel
     return DynamicModel
 
 

@@ -46,7 +46,16 @@ class ChatService:
             "max_output_tokens": max_output_tokens,
             "temperature": temperature,
         }
-        
+        # Truncate chat history to avoid sending very long histories to the model
+        # Low-risk: keep only the last N messages (simpler than token-based trimming)
+        try:
+            max_history_messages = 20
+            if isinstance(input_data, list) and len(input_data) > max_history_messages:
+                input_data = input_data[-max_history_messages:]
+                kwargs["input"] = input_data
+        except Exception:
+            # If anything goes wrong, fall back to original input_data
+            kwargs["input"] = input_data
         if mode == "structured":
             if not schema:
                 raise ValidationError("Schema không được để trống cho chế độ structured")

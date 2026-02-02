@@ -99,11 +99,16 @@ def sidebar():
                 )
                 output_schema = parse_json_schema_text(output_schema_text) or ""
 
-        client = OpenAIStandardClient(
-            model=model,
-            model_provider=model_provider,
-            api_key=api_key,
-        )
+        # Create or reuse a client resource across Streamlit reruns
+        @st.cache_resource
+        def _get_client(model, model_provider, api_key):
+            return OpenAIStandardClient(
+                model=model,
+                model_provider=model_provider,
+                api_key=api_key,
+            )
+
+        client = _get_client(model, model_provider, api_key)
 
     state = {
         "streaming_mode": streaming_mode,

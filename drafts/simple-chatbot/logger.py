@@ -26,6 +26,8 @@ class ChatbotLogger:
         """
         self.name = name
         self.level = level
+        # ensure log_dir attribute exists (Path)
+        self.log_dir = Path(log_dir)
         self._logger: logging.Logger | None = None
 
         # TODO #4: Setup file logging with rotation (Observability)
@@ -58,10 +60,14 @@ class ChatbotLogger:
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setLevel(self.level)
         # Create logs directory if it doesn't exist
-        self.log_dir.mkdir(exist_ok=True)
+        try:
+            self.log_dir.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            # fallback to current directory if we cannot create the logs directory
+            self.log_dir = Path('.')
         # File handler with rotation
         log_file = self.log_dir / f"chatbot_{datetime.now().strftime('%Y%m%d')}.log"
-        file_handler = RotatingFileHandler(log_file, maxBytes=5_000_000, backupCount=5, encoding='utf-8')
+        file_handler = RotatingFileHandler(str(log_file), maxBytes=5_000_000, backupCount=5, encoding='utf-8')
         file_handler.setLevel(logging.DEBUG)
         # Format
         formatter = logging.Formatter(
