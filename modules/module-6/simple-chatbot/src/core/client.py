@@ -17,6 +17,7 @@ class OpenAIStreamingState(str, Enum):
     TEXT_STREAMING_DONE = "response.output_text.done"
     REASONING_IN_PROGRESS = "response.reasoning_text.delta"
     REASONING_DONE = "response.reasoning_text.done"
+    RESPONSE_COMPLETED = "response.completed"
 
 
 
@@ -36,6 +37,7 @@ class OpenAIStandardClient:
     @retry_on_error(max_retries=2, delay=1.0, logger=logger)
     @handle_api_errors(logger=logger, reraise=True)
     def create_response(self, input, stream: bool, **kwargs):
+        
         if not input or (isinstance(input, str) and not input.strip()):
             logger.error("Empty input provided")
             raise ValidationError("Input không được để trống")
@@ -54,28 +56,18 @@ class OpenAIStandardClient:
             return response.output_text
         else:
             logger.debug("Starting streaming response")
-            # TODO #1: Implement streaming generator loop
-            # Solution:
-            # for event in response:
-            #     if event.type == OpenAIStreamingState.TEXT_STREAMING_IN_PROGRESS:
-            #         yield {'type': 'text', 'content': event.delta}
-            #     if event.type == OpenAIStreamingState.TEXT_STREAMING_DONE:
-            #         logger.debug("Streaming completed")
-            #         break
-            #     if event.type == OpenAIStreamingState.REASONING_IN_PROGRESS:
-            #         yield {'type': 'reasoning', 'content': event.delta}
-            #     if event.type == OpenAIStreamingState.REASONING_DONE:
-            #         continue
             for event in response:
                 if event.type == OpenAIStreamingState.TEXT_STREAMING_IN_PROGRESS:
                     yield {'type': 'text', 'content': event.delta}
                 if event.type == OpenAIStreamingState.TEXT_STREAMING_DONE:
                     logger.debug("Streaming completed")
-                    break
                 if event.type == OpenAIStreamingState.REASONING_IN_PROGRESS:
                     yield {'type': 'reasoning', 'content': event.delta}
                 if event.type == OpenAIStreamingState.REASONING_DONE:
                     continue
+                if event.type == OpenAIStreamingState.RESPONSE_COMPLETED:
+                    # TODO #1: Add a way to log token usage for streaming responses
+                    # Write your code here
 
     @retry_on_error(max_retries=2, delay=1.0, logger=logger)
     @handle_api_errors(logger=logger, reraise=True)
@@ -90,28 +82,14 @@ class OpenAIStandardClient:
         
         logger.info(f"Creating structured response with schema: {list(schema.keys())}")
         
-        # TODO #5: Parse structured response using Pydantic model
-        # Solution:
-        # pydantic_model = map_dict_to_pydantic(schema)
-        # response = self.client.responses.parse(
-        #     model=self.model,
-        #     text_format=pydantic_model,
-        #     input=input,
-        #     **kwargs
-        # )
-        # return response.output_parsed
+        # TODO #4: Parse structured response using Pydantic model
         try:
             pydantic_model = map_dict_to_pydantic(schema)
         except Exception as e:
             logger.error(f"Failed to create Pydantic model from schema: {e}")
             raise ValidationError(f"Schema không hợp lệ: {e}") from e
         
-        response = self.client.responses.parse(
-            model=self.model,
-            text_format=pydantic_model,
-            input=input,
-            **kwargs
-        )
+        ## Write your code here
         
         logger.debug("Structured response parsed successfully")
         return response.output_parsed

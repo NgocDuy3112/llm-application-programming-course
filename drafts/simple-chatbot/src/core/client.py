@@ -17,6 +17,7 @@ class OpenAIStreamingState(str, Enum):
     TEXT_STREAMING_DONE = "response.output_text.done"
     REASONING_IN_PROGRESS = "response.reasoning_text.delta"
     REASONING_DONE = "response.reasoning_text.done"
+    RESPONSE_COMPLETED = "response.completed"
 
 
 
@@ -39,7 +40,6 @@ class OpenAIStandardClient:
         if not input or (isinstance(input, str) and not input.strip()):
             logger.error("Empty input provided")
             raise ValidationError("Input không được để trống")
-        
         logger.info(f"Creating response for model: {self.model}, stream: {stream}")
         
         response = self.client.responses.create(
@@ -51,6 +51,7 @@ class OpenAIStandardClient:
         
         if not stream:
             logger.debug("Non-streaming response completed")
+            logger.info(f"Response usage: {response.usage}")
             return response.output_text
         else:
             logger.debug("Starting streaming response")
@@ -71,11 +72,12 @@ class OpenAIStandardClient:
                     yield {'type': 'text', 'content': event.delta}
                 if event.type == OpenAIStreamingState.TEXT_STREAMING_DONE:
                     logger.debug("Streaming completed")
-                    break
                 if event.type == OpenAIStreamingState.REASONING_IN_PROGRESS:
                     yield {'type': 'reasoning', 'content': event.delta}
                 if event.type == OpenAIStreamingState.REASONING_DONE:
                     continue
+                if event.type == OpenAIStreamingState.RESPONSE_COMPLETED:
+                    logger.info(f"Response usage: input_tokens={event.response.usage.input_tokens}, output_tokens={event.response.usage.output_tokens}, total_tokens={event.response.usage.total_tokens}")
 
     @retry_on_error(max_retries=2, delay=1.0, logger=logger)
     @handle_api_errors(logger=logger, reraise=True)
@@ -83,11 +85,9 @@ class OpenAIStandardClient:
         if not input or (isinstance(input, str) and not input.strip()):
             logger.error("Empty input provided")
             raise ValidationError("Input không được để trống")
-        
         if not schema:
             logger.error("Empty schema provided")
             raise ValidationError("Schema không được để trống")
-        
         logger.info(f"Creating structured response with schema: {list(schema.keys())}")
         
         # TODO #5: Parse structured response using Pydantic model
@@ -114,4 +114,5 @@ class OpenAIStandardClient:
         )
         
         logger.debug("Structured response parsed successfully")
+        logger.info(f"Response usage: {response.usage}")
         return response.output_parsed

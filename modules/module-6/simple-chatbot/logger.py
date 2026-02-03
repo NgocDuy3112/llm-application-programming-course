@@ -29,24 +29,6 @@ class ChatbotLogger:
         # ensure log_dir attribute exists (Path)
         self.log_dir = Path(log_dir)
         self._logger: logging.Logger | None = None
-
-        # TODO #4: Setup file logging with rotation (Observability)
-        # Solution:
-        # log_file = self.log_dir / f"chatbot_{datetime.now().strftime('%Y%m%d')}.log"
-        # file_handler = RotatingFileHandler(log_file, maxBytes=5_000_000, backupCount=5, encoding='utf-8')
-        # file_handler.setLevel(logging.DEBUG)
-        # Use a structured JSON formatter for observability (example):
-        # class JSONFormatter(logging.Formatter):
-        #     def format(self, record):
-        #         import json
-        #         payload = {
-        #             "timestamp": self.formatTime(record, self.datefmt),
-        #             "level": record.levelname,
-        #             "logger": record.name,
-        #             "message": record.getMessage(),
-        #         }
-        #         return json.dumps(payload, ensure_ascii=False)
-        # file_handler.setFormatter(JSONFormatter())
         self._setup()
     
     def _setup(self) -> None:

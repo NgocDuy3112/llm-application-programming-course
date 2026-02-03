@@ -56,15 +56,6 @@ def handle_api_errors(
         def create_response(self, input, **kwargs):
             ...
     """
-    # TODO #3: Handle RateLimitError and provide a friendly message
-    # Solution:
-    # except RateLimitError as e:
-    #     error_msg = f"Vượt quá giới hạn request. Vui lòng thử lại sau: {str(e)}"
-    #     if logger:
-    #         logger.warning(error_msg)
-    #     if reraise:
-    #         raise ChatbotError(error_msg) from e
-    #     return default_return
     
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
@@ -111,22 +102,8 @@ def handle_api_errors(
                 if reraise:
                     raise ValidationError(error_msg) from e
                 return default_return
-            
-            except APIError as e:
-                error_msg = f"Lỗi API: {str(e)}"
-                if logger:
-                    logger.error(error_msg, exc_info=True)
-                if reraise:
-                    raise ChatbotError(error_msg) from e
-                return default_return
-            
-            except Exception as e:
-                error_msg = f"Lỗi không xác định: {str(e)}"
-                if logger:
-                    logger.critical(error_msg, exc_info=True)
-                if reraise:
-                    raise ChatbotError(error_msg) from e
-                return default_return
+            # TODO #3: Handle other specific API errors
+            # Write your code here
         return wrapper
     return decorator
 
