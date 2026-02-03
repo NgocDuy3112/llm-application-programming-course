@@ -1,0 +1,7 @@
+gguf
+streamlit
+openai
+transformers
+pydantic
+pydantic-settings
+PyYAML
