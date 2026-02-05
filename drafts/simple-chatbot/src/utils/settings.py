@@ -21,3 +21,5 @@ MODELS_LIST = {
 
 
 NEED_API_KEY_PROVIDERS = ["OpenAI", "Groq", "Gemini"]
+
+MAX_HISTORY_MESSAGES = 10

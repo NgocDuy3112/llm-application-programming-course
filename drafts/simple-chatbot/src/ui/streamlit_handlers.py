@@ -200,3 +200,31 @@ def parse_json_schema_text(schema_text: str) -> dict | None:
         logger.error(f"Invalid JSON schema: {e}")
         st.error("Định dạng JSON không hợp lệ. Vui lòng kiểm tra lại.")
         return None
+
+
+# Streamlit-specific helpers for UI interactions
+def enforce_mutual_exclusion(active_key: str, inactive_key: str) -> None:
+    """When a widget with key `active_key` becomes True, ensure
+    the widget with key `inactive_key` is set to False.
+
+    This function uses `st.session_state` and is intended to be used
+    as an `on_change` callback for checkboxes in the Streamlit UI.
+    """
+    try:
+        if st.session_state.get(active_key, False):
+            st.session_state[inactive_key] = False
+    except Exception as e:
+        logger.debug(f"Failed to enforce mutual exclusion: {e}")
+
+
+def disable_streaming_when_structured() -> None:
+    """Disable the streaming checkbox if structured output is enabled.
+
+    Intended to be used as an `on_change` callback for the structured
+    format checkbox in the Streamlit UI.
+    """
+    try:
+        if st.session_state.get("structured_mode_widget", False):
+            st.session_state["streaming_mode_widget"] = False
+    except Exception as e:
+        logger.debug(f"Failed to disable streaming widget: {e}")

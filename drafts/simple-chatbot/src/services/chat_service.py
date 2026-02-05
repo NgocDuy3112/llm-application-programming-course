@@ -1,12 +1,14 @@
 """Business logic for chat operations"""
 
 import json
-from typing import Any, Generator
-import streamlit as st
+from typing import Any
+from collections.abc import Generator
 
 from src.core.client import OpenAIStandardClient
 from src.core.exceptions import ChatbotError, APIKeyError, ValidationError
 from logger import ChatbotLogger
+from src.utils.settings import MAX_HISTORY_MESSAGES
+
 
 logger = ChatbotLogger.get_logger("chat_service")
 
@@ -16,6 +18,42 @@ class ChatService:
     
     def __init__(self, client: OpenAIStandardClient):
         self.client = client
+
+    @staticmethod
+    def sliding_window(history: list[dict], max_messages: int) -> list[dict]:
+        """Return the last `max_messages` messages from the history.
+
+        This is a pure function and does not depend on Streamlit.
+        """
+        if not isinstance(history, list):
+            return history
+        if max_messages <= 0:
+            return []
+        if len(history) <= max_messages:
+            return history
+        return history[-max_messages:]
+
+    @staticmethod
+    def summarize_conversation(history: list[dict]) -> list[dict]:
+        """Create a short summary of the whole conversation and return a new
+        history containing a single system message with the summary.
+
+        This is a pure function and does not depend on Streamlit.
+        """
+        if not isinstance(history, list) or len(history) == 0:
+            return history
+
+        summary_lines = []
+        for i, msg in enumerate(history):
+            role = msg.get("role", "user")
+            content = msg.get("content", "")
+            # Replace newlines to keep summary compact
+            one_liner = content.replace("\n", " ")
+            summary_lines.append(f"{i+1}. {role}: {one_liner}")
+
+        summary = "Tóm tắt cuộc hội thoại:\n" + "\n".join(summary_lines)
+        # Use 'assistant' role so the UI renders the summary as a bot message
+        return [{"role": "assistant", "content": summary}]
     
     def create_response(
         self,
@@ -25,6 +63,9 @@ class ChatService:
         max_output_tokens: int = 512,
         temperature: float = 0.7,
         schema: dict | None = None,
+        use_sliding_window: bool = False,
+        use_summarization: bool = False,
+        max_history_messages: int | None = None,
     ) -> str | Generator:
         """
         Create chat response based on mode
@@ -46,12 +87,20 @@ class ChatService:
             "max_output_tokens": max_output_tokens,
             "temperature": temperature,
         }
-        # Truncate chat history to avoid sending very long histories to the model
-        # Low-risk: keep only the last N messages (simpler than token-based trimming)
+        # Apply chat history management techniques based on provided flags (no Streamlit here)
         try:
-            max_history_messages = 20
-            if isinstance(input_data, list) and len(input_data) > max_history_messages:
-                input_data = input_data[-max_history_messages:]
+            if use_sliding_window and use_summarization:
+                raise ValidationError("Only one context management strategy should be enabled at a time")
+
+            if use_summarization:
+                # Summarize the entire conversation
+                input_data = self.summarize_conversation(input_data)
+                kwargs["input"] = input_data
+
+            else:
+                # Sliding window or default behavior: keep last N messages
+                n = max_history_messages or MAX_HISTORY_MESSAGES
+                input_data = self.sliding_window(input_data, n)
                 kwargs["input"] = input_data
         except Exception:
             # If anything goes wrong, fall back to original input_data

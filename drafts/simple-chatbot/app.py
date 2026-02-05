@@ -9,6 +9,8 @@ from src.ui.streamlit_handlers import (
     render_chat_history,
     load_json_schema,
     parse_json_schema_text,
+    enforce_mutual_exclusion,
+    disable_streaming_when_structured,
 )
 from src.utils.settings import *
 from logger import ChatbotLogger
@@ -62,42 +64,59 @@ def sidebar():
             height=200,
         )
 
-        streaming_mode = st.checkbox(
-            "Chế độ Streaming",
-            value=st.session_state["streaming_mode"],
-            key="streaming_mode_widget",
-            disabled=st.session_state.get("structured_mode_widget", False),
-        )
+        # Output format controls
+        with st.expander("Định dạng output", expanded=True):
+            streaming_mode = st.checkbox(
+                "Chế độ Streaming",
+                value=st.session_state.get("streaming_mode_widget", True),
+                key="streaming_mode_widget",
+                disabled=st.session_state.get("structured_mode_widget", False),
+            )
 
-        structured_output_mode = st.checkbox(
-            "Chế độ định dạng theo cấu trúc",
-            value=st.session_state.get("structured_mode_widget", False),
-            key="structured_mode_widget",
-            on_change=(
-                lambda: st.session_state.update(streaming_mode=False)
-                if st.session_state["structured_mode_widget"]
-                else None
-            ),
-        )
+            structured_output_mode = st.checkbox(
+                "Chế độ định dạng theo cấu trúc",
+                value=st.session_state.get("structured_mode_widget", False),
+                key="structured_mode_widget",
+                on_change=disable_streaming_when_structured,
+            )
 
-        output_schema = ""
-        if structured_output_mode:
-            st.session_state["streaming_mode"] = False
-            streaming_mode = False
-            
-            # Try loading from file first
-            schema_from_file = load_json_schema()
-            
-            if schema_from_file:
-                output_schema = schema_from_file
-            else:
-                # Fallback to text input
-                output_schema_text = st.text_area(
-                    "Lược đồ Đầu ra (định dạng JSON)",
-                    value='{"field_name": { "type": "str", "default": null, "description": "Description of the field" }}',
-                    height=300,
-                )
-                output_schema = parse_json_schema_text(output_schema_text) or ""
+            output_schema = ""
+            if structured_output_mode:
+                # Ensure streaming is considered disabled when structured output is active
+                st.session_state["streaming_mode"] = False
+                streaming_mode = False
+
+                # Try loading from file first
+                schema_from_file = load_json_schema()
+
+                if schema_from_file:
+                    output_schema = schema_from_file
+                else:
+                    # Fallback to text input
+                    output_schema_text = st.text_area(
+                        "Lược đồ Đầu ra (định dạng JSON)",
+                        value='{"field_name": { "type": "str", "default": null, "description": "Description of the field" }}',
+                        height=300,
+                    )
+                    output_schema = parse_json_schema_text(output_schema_text) or ""
+
+        # Context management controls
+        with st.expander("Quản lý ngữ cảnh", expanded=True):
+            sliding_window_mode = st.checkbox(
+                "Sử dụng kỹ thuật Sliding Window",
+                value=st.session_state.get("sliding_window_mode_widget", False),
+                key="sliding_window_mode_widget",
+                on_change=enforce_mutual_exclusion,
+                args=("sliding_window_mode_widget", "summarization_mode_widget"),
+            )
+
+            summarization_mode = st.checkbox(
+                "Sử dụng kỹ thuật Summarization",
+                value=st.session_state.get("summarization_mode_widget", False),
+                key="summarization_mode_widget",
+                on_change=enforce_mutual_exclusion,
+                args=("summarization_mode_widget", "sliding_window_mode_widget"),
+            )
 
         # Create or reuse a client resource across Streamlit reruns
         @st.cache_resource
@@ -113,6 +132,8 @@ def sidebar():
     state = {
         "streaming_mode": streaming_mode,
         "structured_output_mode": structured_output_mode,
+        "sliding_window_mode": sliding_window_mode,
+        "summarization_mode": summarization_mode,
         "output_schema": output_schema,
         "custom_instructions": custom_instructions,
         "max_output_tokens": max_output_tokens,
@@ -141,6 +162,10 @@ def main():
         st.session_state["chat_history"] = []
     if "streaming_mode" not in st.session_state:
         st.session_state["streaming_mode"] = True
+    if "sliding_window_mode" not in st.session_state:
+        st.session_state["sliding_window_mode"] = False
+    if "summarization_mode" not in st.session_state:
+        st.session_state["summarization_mode"] = False
     
     # Get client and settings from sidebar
     client, sidebar_state = sidebar()
@@ -195,6 +220,9 @@ def main():
                     max_output_tokens=sidebar_state["max_output_tokens"],
                     temperature=sidebar_state["temperature"],
                     schema=sidebar_state.get("output_schema") if mode == "structured" else None,
+                    use_sliding_window=sidebar_state.get("sliding_window_mode", False),
+                    use_summarization=sidebar_state.get("summarization_mode", False),
+                    max_history_messages=None,
                 )
                 
                 # Display response
