@@ -77,11 +77,17 @@ def stream_response(response: Generator, spinner_text: str) -> str:
     """
     response_iter = iter(response)
     
-    with st.spinner(spinner_text):
-        try:
-            first_chunk = next(response_iter)
-        except StopIteration:
-            first_chunk = None
+    # Use a placeholder for the loading state to avoid stacking multiple elements
+    loading_ph = st.empty()
+    loading_ph.markdown(f"*{spinner_text}*")
+
+    try:
+        first_chunk = next(response_iter)
+    except StopIteration:
+        first_chunk = None
+    finally:
+        # Clear loading indicator once we have the first chunk or stream ends
+        loading_ph.empty()
 
     if first_chunk is None:
         st.markdown("")
@@ -89,26 +95,22 @@ def stream_response(response: Generator, spinner_text: str) -> str:
 
     thinking_expander = st.expander(THINKING_PROCESS_DISPLAY_STRING, expanded=False)
     thinking_ph = thinking_expander.empty()
-    message_ph = st.empty()
-    full_text = ""
+    
     full_reasoning = ""
 
-    for chunk in _chain_first(first_chunk, response_iter):
-        ctype = chunk.get("type") if isinstance(chunk, dict) else "text"
-        content = chunk.get("content") if isinstance(chunk, dict) else str(chunk)
-        
-        if ctype == "reasoning":
-            full_reasoning += content
-            thinking_ph.markdown(full_reasoning)
-        else:
-            full_text += content
-            message_ph.markdown(full_text + "▌")
+    def response_generator():
+        nonlocal full_reasoning
+        for chunk in _chain_first(first_chunk, response_iter):
+            ctype = chunk.get("type") if isinstance(chunk, dict) else "text"
+            content = chunk.get("content") if isinstance(chunk, dict) else str(chunk)
+            
+            if ctype == "reasoning":
+                full_reasoning += content
+                thinking_ph.markdown(full_reasoning)
+            else:
+                yield content
 
-    if full_reasoning:
-        thinking_ph.markdown(full_reasoning)
-    
-    message_ph.markdown(full_text)
-    return full_text
+    return st.write_stream(response_generator())
 
 
 def display_response(content: str, mode: str) -> None:

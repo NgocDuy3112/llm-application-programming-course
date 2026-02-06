@@ -5,7 +5,7 @@ from typing import Any
 from collections.abc import Generator
 
 from src.core.client import OpenAIStandardClient
-from src.core.exceptions import ChatbotError, APIKeyError, ValidationError
+from src.core.exceptions import ValidationError
 from logger import ChatbotLogger
 from src.utils.settings import MAX_HISTORY_MESSAGES
 
@@ -33,28 +33,51 @@ class ChatService:
             return history
         return history[-max_messages:]
 
-    @staticmethod
-    def summarize_conversation(history: list[dict]) -> list[dict]:
-        """Create a short summary of the whole conversation and return a new
-        history containing a single system message with the summary.
+    def summarize_conversation(self, history: list[dict], instructions: str | None = None) -> list[dict]:
+        """Build a summarization prompt for the model.
 
-        This is a pure function and does not depend on Streamlit.
+        The returned value is a list of messages structured as:
+            - system instruction
+            - the conversation messages (chronological)
+            - a final user instruction requesting a concise summary (3-5 bullets)
+
+        This function does NOT call the model; it only constructs the prompt.
         """
         if not isinstance(history, list) or len(history) == 0:
-            return history
+            return []
 
-        summary_lines = []
-        for i, msg in enumerate(history):
-            role = msg.get("role", "user")
-            content = msg.get("content", "")
-            # Replace newlines to keep summary compact
-            one_liner = content.replace("\n", " ")
-            summary_lines.append(f"{i+1}. {role}: {one_liner}")
+        summarization_instruction = (
+            "HÃY TÓM TẮT VÀ TRẢ LỜI: Trước tiên, tóm tắt ngắn gọn các điểm chính và các hành động cần thực hiện "
+            "(3-5 gạch đầu dòng). Sau đó, dựa trên tóm tắt, tiếp tục trả lời câu hỏi hoặc phản hồi của người dùng cuối cùng. "
+            "Chỉ trả về phần tóm tắt và phần trả lời, không lặp lại toàn bộ hội thoại. Viết bằng tiếng Việt."
+        )
 
-        summary = "Tóm tắt cuộc hội thoại:\n" + "\n".join(summary_lines)
-        # Use 'assistant' role so the UI renders the summary as a bot message
-        return [{"role": "assistant", "content": summary}]
-    
+        # Build prompt logic with correct message structure
+        summ_prompt = []
+        if instructions:
+            summ_prompt.append({"role": "system", "content": instructions})
+        else:
+            summ_prompt.append({"role": "system", "content": summarization_instruction})
+            
+        summ_prompt.extend(history)
+
+        summary_resp = self.client.create_response(
+            input=summ_prompt,
+            stream=False,
+            max_output_tokens=256,
+            temperature=0.2,
+        )
+        if isinstance(summary_resp, str):
+            summary_text = summary_resp
+        elif hasattr(summary_resp, "output_text"):
+            summary_text = str(summary_resp.output_text)
+        elif isinstance(summary_resp, dict) and "output_text" in summary_resp:
+            summary_text = str(summary_resp["output_text"])
+        else:
+            summary_text = str(summary_resp)
+        return summary_text
+
+
     def create_response(
         self,
         mode: str,
@@ -88,19 +111,23 @@ class ChatService:
             "temperature": temperature,
         }
         # Apply chat history management techniques based on provided flags (no Streamlit here)
+        if use_sliding_window and use_summarization:
+            raise ValidationError("Only one context management strategy should be enabled at a time")
+
         try:
-            if use_sliding_window and use_summarization:
-                raise ValidationError("Only one context management strategy should be enabled at a time")
-
             if use_summarization:
-                # Summarize the entire conversation
-                input_data = self.summarize_conversation(input_data)
-                kwargs["input"] = input_data
-
-            else:
-                # Sliding window or default behavior: keep last N messages
+                # First, call the client to summarize the full history (non-streaming).
+                try:
+                    summary_text = self.summarize_conversation(input_data, instructions=None)
+                    kwargs["input"] = input_data + [{"role": "user", "content": summary_text}]
+                except Exception as e:
+                    logger.debug(f"Summarization call failed: {e}; proceeding without summarization")
+                    kwargs["input"] = input_data
+            elif use_sliding_window:
                 n = max_history_messages or MAX_HISTORY_MESSAGES
                 input_data = self.sliding_window(input_data, n)
+                kwargs["input"] = input_data
+            else:
                 kwargs["input"] = input_data
         except Exception:
             # If anything goes wrong, fall back to original input_data
@@ -108,6 +135,7 @@ class ChatService:
         if mode == "structured":
             if not schema:
                 raise ValidationError("Schema không được để trống cho chế độ structured")
+            self.validate_schema(schema)
             kwargs["schema"] = schema
             kwargs["stream"] = False
             response = self.client.create_structured_response(**kwargs)

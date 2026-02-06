@@ -66,14 +66,14 @@ def sidebar():
 
         # Output format controls
         with st.expander("Định dạng output", expanded=True):
-            streaming_mode = st.checkbox(
+            streaming_mode = st.toggle(
                 "Chế độ Streaming",
                 value=st.session_state.get("streaming_mode_widget", True),
                 key="streaming_mode_widget",
                 disabled=st.session_state.get("structured_mode_widget", False),
             )
 
-            structured_output_mode = st.checkbox(
+            structured_output_mode = st.toggle(
                 "Chế độ định dạng theo cấu trúc",
                 value=st.session_state.get("structured_mode_widget", False),
                 key="structured_mode_widget",
@@ -102,7 +102,7 @@ def sidebar():
 
         # Context management controls
         with st.expander("Quản lý ngữ cảnh", expanded=True):
-            sliding_window_mode = st.checkbox(
+            sliding_window_mode = st.toggle(
                 "Sử dụng kỹ thuật Sliding Window",
                 value=st.session_state.get("sliding_window_mode_widget", False),
                 key="sliding_window_mode_widget",
@@ -110,7 +110,7 @@ def sidebar():
                 args=("sliding_window_mode_widget", "summarization_mode_widget"),
             )
 
-            summarization_mode = st.checkbox(
+            summarization_mode = st.toggle(
                 "Sử dụng kỹ thuật Summarization",
                 value=st.session_state.get("summarization_mode_widget", False),
                 key="summarization_mode_widget",
@@ -212,10 +212,15 @@ def main():
                 if mode == "structured":
                     chat_service.validate_schema(sidebar_state["output_schema"])
                 
-                # Get response
+                # Decide whether to pass full chat history or just the latest user input
+                use_history = (
+                    sidebar_state.get("sliding_window_mode", False) or sidebar_state.get("summarization_mode", False)
+                )
+                input_payload = st.session_state["chat_history"] if use_history else user_input
+
                 response = chat_service.create_response(
                     mode=mode,
-                    input_data=st.session_state["chat_history"],
+                    input_data=input_payload,
                     instructions=sidebar_state["custom_instructions"],
                     max_output_tokens=sidebar_state["max_output_tokens"],
                     temperature=sidebar_state["temperature"],
