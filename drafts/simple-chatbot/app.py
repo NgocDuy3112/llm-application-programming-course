@@ -1,6 +1,10 @@
 import streamlit as st
 import json
 
+# Use wide page layout to avoid fixed left margin issues when sidebar is collapsed
+# Must be called before any other Streamlit UI calls
+st.set_page_config(page_title="Simple Chatbot Application", layout="wide")
+
 from src.core.client import OpenAIStandardClient
 from src.services.chat_service import ChatService
 from src.ui.streamlit_handlers import (
@@ -145,18 +149,6 @@ def sidebar():
 def main():
     st.title("Simple Chatbot Application")
     
-    # Widen sidebar
-    st.markdown(
-        """
-        <style>
-        [data-testid="stSidebar"] { width: 420px; min-width: 420px; }
-        .css-1d391kg { width: 420px; }
-        main { margin-left: 440px; }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-    
     # Initialize session state
     if "chat_history" not in st.session_state:
         st.session_state["chat_history"] = []
@@ -207,17 +199,14 @@ def main():
             try:
                 # Validate input
                 chat_service.validate_input(user_input)
-                
                 # Validate schema if structured mode
                 if mode == "structured":
                     chat_service.validate_schema(sidebar_state["output_schema"])
-                
                 # Decide whether to pass full chat history or just the latest user input
                 use_history = (
                     sidebar_state.get("sliding_window_mode", False) or sidebar_state.get("summarization_mode", False)
                 )
                 input_payload = st.session_state["chat_history"] if use_history else user_input
-
                 response = chat_service.create_response(
                     mode=mode,
                     input_data=input_payload,
@@ -237,15 +226,31 @@ def main():
                     st.json(json.loads(response))
                     content = response
                 else:
-                    with st.spinner("Đang phản hồi..."):
-                        content = response
-                    st.markdown(content)
-                
+                    # For non-streaming responses we can optionally animate the final
+                    # string using `st.write_stream()` (chunked locally). This preserves
+                    # the same UX but gives a typing effect for long responses.
+                    if isinstance(response, str):
+                        content = stream_response(response, "Đang phản hồi...")
+                    else:
+                        with st.spinner("Đang phản hồi..."):
+                            content = response
+                        st.markdown(content)
             except Exception as e:
                 content = handle_response_error(e, mode=mode)
         
         # Save to history
-        if content:
+        # For streaming responses we now return a dict with 'content' and 'reasoning'.
+        if isinstance(content, dict):
+            # Only persist if there is real output or reasoning text
+            if content.get("content") or content.get("reasoning"):
+                assistant_msg = {
+                    "role": "assistant",
+                    "content": content.get("content", "")
+                }
+                if content.get("reasoning"):
+                    assistant_msg["reasoning"] = content.get("reasoning")
+                st.session_state["chat_history"].append(assistant_msg)
+        elif content:
             st.session_state["chat_history"].append({
                 "role": "assistant",
                 "content": content

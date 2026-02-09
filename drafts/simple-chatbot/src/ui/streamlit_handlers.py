@@ -19,6 +19,29 @@ def _chain_first(first_item, iterator):
     yield from iterator
 
 
+def _string_chunk_generator(text: str, words_per_chunk: int = 6):
+    """Yield successive chunks of the given text split by words.
+
+    This is used to provide a lightweight "typing" animation when
+    we only have the final string (non-streaming responses).
+    """
+    if not text:
+        return
+    words = text.split()
+    if not words:
+        yield text
+        return
+    i = 0
+    while i < len(words):
+        chunk_words = words[i : i + words_per_chunk]
+        chunk = " ".join(chunk_words)
+        # Preserve spacing between chunks
+        if i + words_per_chunk < len(words):
+            chunk += " "
+        yield chunk
+        i += words_per_chunk
+
+
 def handle_response_error(e: Exception, mode: str = "general") -> str:
     """
     Handle and display errors in Streamlit UI
@@ -64,22 +87,40 @@ def handle_response_error(e: Exception, mode: str = "general") -> str:
     return error_msg
 
 
-def stream_response(response: Generator, spinner_text: str) -> str:
+def stream_response(response: Generator | str, spinner_text: str) -> dict:
     """
-    Stream and display response with reasoning support
-    
-    Args:
-        response: Generator yielding response chunks
-        spinner_text: Loading text for spinner
-        
+    Stream and display response with reasoning support.
+
+    Accepts either:
+    - a generator yielding dicts like {'type': 'text'|'reasoning', 'content': '...'}
+    - or a final string (non-streaming) which will be animated locally.
+
     Returns:
-        Full response text
+        Dict with keys: 'content' (full response text) and 'reasoning' (accumulated reasoning text)
     """
-    response_iter = iter(response)
-    
     # Use a placeholder for the loading state to avoid stacking multiple elements
     loading_ph = st.empty()
     loading_ph.markdown(f"*{spinner_text}*")
+
+    # --- String (non-streaming) path: animate the final text locally ---
+    if isinstance(response, str):
+        loading_ph.empty()
+        thinking_expander = st.expander(THINKING_PROCESS_DISPLAY_STRING, expanded=False)
+        thinking_ph = thinking_expander.empty()
+
+        full_parts: list[str] = []
+
+        def gen_from_string():
+            for part in _string_chunk_generator(response):
+                full_parts.append(part)
+                yield part
+
+        st.write_stream(gen_from_string())
+        full_text = "".join(full_parts) if full_parts else response
+        return {"content": full_text, "reasoning": ""}
+
+    # --- Generator path (streaming) ---
+    response_iter = iter(response)
 
     try:
         first_chunk = next(response_iter)
@@ -91,26 +132,35 @@ def stream_response(response: Generator, spinner_text: str) -> str:
 
     if first_chunk is None:
         st.markdown("")
-        return ""
+        return {"content": "", "reasoning": ""}
 
     thinking_expander = st.expander(THINKING_PROCESS_DISPLAY_STRING, expanded=False)
     thinking_ph = thinking_expander.empty()
-    
+
+    full_parts: list[str] = []
     full_reasoning = ""
 
     def response_generator():
-        nonlocal full_reasoning
+        nonlocal full_parts, full_reasoning
         for chunk in _chain_first(first_chunk, response_iter):
             ctype = chunk.get("type") if isinstance(chunk, dict) else "text"
             content = chunk.get("content") if isinstance(chunk, dict) else str(chunk)
-            
+
             if ctype == "reasoning":
                 full_reasoning += content
                 thinking_ph.markdown(full_reasoning)
             else:
+                full_parts.append(content)
                 yield content
 
-    return st.write_stream(response_generator())
+        # Ensure final reasoning is shown when stream completes
+        if full_reasoning:
+            thinking_ph.markdown(full_reasoning)
+
+    # Stream main text to UI and return both text and reasoning for persistence
+    st.write_stream(response_generator())
+    full_text = "".join(full_parts)
+    return {"content": full_text, "reasoning": full_reasoning}
 
 
 def display_response(content: str, mode: str) -> None:
@@ -136,16 +186,22 @@ def display_response(content: str, mode: str) -> None:
 def render_chat_history(chat_history: list[dict[str, str]]) -> None:
     """
     Render chat history in Streamlit
-    
+
     Args:
         chat_history: List of chat messages
     """
     for msg in chat_history:
         role = msg.get("role", "user")
         content = msg.get("content", "")
-        
+        reasoning = msg.get("reasoning", "")
+
         with st.chat_message(role):
             if role == "assistant":
+                # Show persisted reasoning (if any) in an expander so it survives reruns
+                if reasoning:
+                    thinking_expander = st.expander(THINKING_PROCESS_DISPLAY_STRING, expanded=False)
+                    thinking_expander.markdown(reasoning)
+
                 # Determine display mode based on content
                 if content.strip().startswith("{"):
                     mode = "structured"
