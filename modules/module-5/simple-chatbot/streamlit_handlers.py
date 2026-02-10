@@ -31,7 +31,7 @@ def sidebar():
             step=1
         )
         custom_instructions = st.text_area(
-            "Chỉ dẫn tùy chỉnh (tùy chọn)",
+            "Chỉ dẫn tùy chỉnh",
             value="",
             height=200,
         )

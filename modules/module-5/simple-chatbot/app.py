@@ -4,17 +4,7 @@ from chat_service import *
 
 
 def main():
-    st.title("Xây dựng chatbot đơn giản cùng Streamlit")
-    st.markdown(
-        """
-        <style>
-        [data-testid="stSidebar"] { width: 420px; min-width: 420px; }
-        .css-1d391kg { width: 420px; }
-        main { margin-left: 440px; }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
+    st.title("Xây dựng chatbot đơn giản")
     if "chat_history" not in st.session_state:
         st.session_state["chat_history"] = []
     sidebar_state = sidebar()

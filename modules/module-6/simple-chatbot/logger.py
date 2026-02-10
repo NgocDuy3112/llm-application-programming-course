@@ -98,5 +98,5 @@ class ChatbotLogger:
         self._logger.critical(message, *args, **kwargs)
 
 
-# Create default logger instance
+
 logger = ChatbotLogger.get_logger()

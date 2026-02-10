@@ -70,7 +70,7 @@ class SummarizationChatService(ChatService):
             "Tạo bản tóm tắt cực ngắn nhưng đủ ý, ưu tiên: mục tiêu, quyết định, thông tin quan trọng, việc cần làm, ràng buộc."
         )
         prompt = (
-            f"Tóm tắt cũ (nếu có):\n{self.history_summary or '(trống)'}\n\n"
+            f"Tóm tắt cũ (nếu có):\n{self.history_summary or ''}\n\n"
             f"Transcript mới cần gộp:\n{transcript}\n\n"
             "Trả về đúng 1 đoạn tóm tắt ngắn gọn."
         )

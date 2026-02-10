@@ -1,0 +1,22 @@
+providers:
+  - name: OpenAI
+    default_models:
+      - gpt-3.5-turbo
+      - gpt-4
+    needs_api_key: true
+  - name: Groq
+    default_models:
+      - openai/gpt-oss-20b
+      - openai/gpt-oss-120b
+    needs_api_key: true
+  - name: Gemini
+    default_models:
+      - gemini-3-flash-preview
+      - gemini-3-pro-preview
+    needs_api_key: true
+  - name: Ollama
+    default_models:
+      - qwen3:4b
+      - qwen3:1.7b
+      - gemma3:1b
+    needs_api_key: false
