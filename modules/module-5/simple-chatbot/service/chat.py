@@ -3,7 +3,7 @@ from openai import OpenAI
 
 
 class ChatService:
-    def __init__(self, client: OpenAI, history=None):
+    def __init__(self, client: OpenAI, history: list | None = None):
         self.client = client
         self.conversation_history = history if history is not None else []
 
@@ -51,7 +51,7 @@ class ChatService:
 
 
 class SlidingWindowChatService(ChatService):
-    def __init__(self, client, window_size=10, history=None):
+    def __init__(self, client, window_size: int = 10, history: list | None = None):
         super().__init__(client, history)
         self.window_size = window_size
 
@@ -79,7 +79,7 @@ class SlidingWindowChatService(ChatService):
 
 
 class SummarizationChatService(ChatService):
-    def __init__(self, client, summary_turn_threshold=10, keep_last=1, history=None):
+    def __init__(self, client, summary_turn_threshold: int = 10, keep_last: int = 1, history: list | None = None):
         super().__init__(client, history)
         self.summary_turn_threshold = summary_turn_threshold
         self.keep_last = keep_last

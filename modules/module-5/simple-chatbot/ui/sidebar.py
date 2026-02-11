@@ -38,6 +38,11 @@ def sidebar():
             value="",
             height=200,
         )
+        streaming_mode = st.toggle(
+            "Chế độ streaming",
+            value=st.session_state.get("streaming_mode_widget", False),
+            key="streaming_mode_widget"
+        )
         with st.expander("Quản lý ngữ cảnh"):
             def _on_sliding_change():
                 # If enabling sliding window, disable summarization
@@ -67,6 +72,7 @@ def sidebar():
         "temperature": temperature,
         "max_output_tokens": max_output_tokens,
         "custom_instructions": custom_instructions,
+        "streaming_mode": streaming_mode,
         "sliding_window_mode": sliding_window_mode,
         "summarization_mode": summarization_mode,
     }

@@ -31,10 +31,11 @@ def main():
                     model="openai/gpt-oss-20b",
                     instructions=sidebar_state["custom_instructions"],
                     max_output_tokens=sidebar_state["max_output_tokens"],
+                    stream=sidebar_state["streaming_mode"],
                     temperature=sidebar_state["temperature"]
                 )
                 with st.spinner("Đang phản hồi..."):
-                    display_response(response)
+                    display_response(response) if not sidebar_state["streaming_mode"] else display_streaming_response(response)
             except Exception as e:
                 st.error(f"❌ [ERROR] {str(e)}")
 
