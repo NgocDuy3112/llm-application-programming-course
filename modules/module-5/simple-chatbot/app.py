@@ -1,6 +1,6 @@
-from streamlit_handlers import *
-from chat_service import *
-
+from ui.sidebar import *
+from service.chat import *
+from rich import print
 
 
 def main():
@@ -24,7 +24,6 @@ def main():
         # Display user message
         with st.chat_message("user"):
             st.markdown(user_input)
-        
         with st.chat_message("assistant"):
             try:
                 response = chat_service.response(
@@ -35,13 +34,9 @@ def main():
                     temperature=sidebar_state["temperature"]
                 )
                 with st.spinner("Đang phản hồi..."):
-                    content = response.output_text
-                display_response(content)
-                st.session_state["chat_history"].append({"role": "assistant", "content": content})
+                    display_response(response)
             except Exception as e:
                 st.error(f"❌ [ERROR] {str(e)}")
-                if st.button("🔄 Thử lại"):
-                    st.rerun()
 
 
 

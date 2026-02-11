@@ -7,20 +7,45 @@ class ChatService:
         self.client = client
         self.conversation_history = history if history is not None else []
 
+    def _convert_response_to_dict(self, response):
+        message_dict = {
+            "role": "assistant",
+        }
+        try:
+            for block in response.output:
+                content = block.content[0].text
+                match block.type:
+                    case 'reasoning':
+                        if (summary := block.summary or content):
+                            message_dict["reasoning_content"] = summary
+                    case 'message':
+                        if block.content and content:
+                            message_dict["content"] = content
+                    case _:
+                        raise ValueError(f"Unsupported block type: {block.type}")
+        except Exception as e:
+            print(e)
+        finally:
+            return message_dict
+
     def response(self, model: str, instructions: str, input: str | dict, **kwargs):
-        if isinstance(input, str):
-            self.conversation_history.append({"role": "user", "content": input})
-        elif isinstance(input, dict):
-            self.conversation_history.append(input)
-        else:
-            raise ValueError("Input must be a string or a dictionary representing a message.")
+        try:
+            if isinstance(input, str):
+                new_msg = {"role": "user", "content": input}
+            elif isinstance(input, dict):
+                new_msg = input
+            else:
+                raise ValueError("Input must be a string or a dictionary representing a message.")
+        except Exception as e:
+            print(e)
+        self.conversation_history.append(new_msg)
         response = self.client.responses.create(
             model=model,
             instructions=instructions,
             input=self.conversation_history,
             **kwargs
         )
-        self.conversation_history.append({"role": "assistant", "content": response.output_text})
+        self.conversation_history.append(self._convert_response_to_dict(response))
         return response
 
 
@@ -31,10 +56,16 @@ class SlidingWindowChatService(ChatService):
         self.window_size = window_size
 
     def response(self, model: str, instructions: str, input: str | dict, **kwargs):
-        if isinstance(input, str):
-            self.conversation_history.append({"role": "user", "content": input})
-        else:
-            self.conversation_history.append(input)
+        try:
+            if isinstance(input, str):
+                new_msg = {"role": "user", "content": input}
+            elif isinstance(input, dict):
+                new_msg = input
+            else:
+                raise ValueError("Input must be a string or a dictionary representing a message.")
+        except Exception as e:
+            print(e)
+        self.conversation_history.append(new_msg)
         context_to_send = self.conversation_history[-self.window_size:]
         response = self.client.responses.create(
             model=model,
@@ -42,8 +73,7 @@ class SlidingWindowChatService(ChatService):
             input=context_to_send,
             **kwargs
         )
-        
-        self.conversation_history.append({"role": "assistant", "content": response.output_text})
+        self.conversation_history.append(self._convert_response_to_dict(response))
         return response
 
 
@@ -82,7 +112,12 @@ class SummarizationChatService(ChatService):
         self.history_summary = (resp.output_text or "").strip()
 
     def response(self, model: str, instructions: str, input: str | dict, **kwargs):
-        new_msg = {"role": "user", "content": input} if isinstance(input, str) else input
+        if isinstance(input, str):
+            new_msg = {"role": "user", "content": input}
+        elif isinstance(input, dict):
+            new_msg = input
+        else:
+            raise ValueError("Input must be a string or a dictionary representing a message.")
         self.conversation_history.append(new_msg)
 
         if self._turn_count(self.conversation_history) >= self.summary_turn_threshold:
@@ -101,5 +136,5 @@ class SummarizationChatService(ChatService):
             input=self.conversation_history,
             **kwargs
         )
-        self.conversation_history.append({"role": "assistant", "content": resp.output_text})
+        self.conversation_history.append(self._convert_response_to_dict(resp))
         return resp

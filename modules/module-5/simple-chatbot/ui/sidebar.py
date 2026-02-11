@@ -1,7 +1,10 @@
 import json
 import streamlit as st
 from settings import Settings
-from chat_service import *
+
+from service.chat import *
+from ui.helpers import *
+
 
 
 settings = Settings()
@@ -68,30 +71,3 @@ def sidebar():
         "summarization_mode": summarization_mode,
     }
     return state
-
-
-
-def display_response(content: str) -> None:
-    if content.startswith("[ERROR]"):
-        st.error(content.replace("[ERROR] ", "❌ "))
-    elif content.strip().startswith("{") and content.strip().endswith("}"):
-        json_data = json.loads(content)
-        st.json(json_data)
-    else:
-        st.markdown(content)
-
-
-
-def render_chat_history(chat_history: list[dict[str, str]]) -> None:
-    """
-    Render chat history in Streamlit
-    
-    Args:
-        chat_history: List of chat messages
-    """
-    for msg in chat_history:
-        role = msg.get("role", "user")
-        content = msg.get("content", "")
-        
-        with st.chat_message(role):
-            display_response(content)
