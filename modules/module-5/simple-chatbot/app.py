@@ -12,7 +12,12 @@ def main():
         api_key=sidebar_state["api_key"], 
         base_url="https://api.groq.com/openai/v1"
     )
-    chat_service = SlidingWindowChatService(client=client, history=st.session_state["chat_history"])
+    if sidebar_state["summarization_mode"]:
+        chat_service = SummarizationChatService(client=client, history=st.session_state["chat_history"])
+    elif sidebar_state["sliding_window_mode"]:
+        chat_service = SlidingWindowChatService(client=client, history=st.session_state["chat_history"])
+    else:
+        chat_service = ChatService(client=client)
     render_chat_history(st.session_state["chat_history"])
     user_input = st.chat_input("Nhập tin nhắn của bạn...")
     if user_input:
@@ -32,9 +37,11 @@ def main():
                 with st.spinner("Đang phản hồi..."):
                     content = response.output_text
                 display_response(content)
-                
+                st.session_state["chat_history"].append({"role": "assistant", "content": content})
             except Exception as e:
                 st.error(f"❌ [ERROR] {str(e)}")
+                if st.button("🔄 Thử lại"):
+                    st.rerun()
 
 
 

@@ -35,12 +35,37 @@ def sidebar():
             value="",
             height=200,
         )
+        with st.expander("Quản lý ngữ cảnh"):
+            def _on_sliding_change():
+                # If enabling sliding window, disable summarization
+                if st.session_state.get("sliding_window_mode_widget", False):
+                    st.session_state["summarization_mode_widget"] = False
+
+            def _on_summarization_change():
+                # If enabling summarization, disable sliding window
+                if st.session_state.get("summarization_mode_widget", False):
+                    st.session_state["sliding_window_mode_widget"] = False
+
+            sliding_window_mode = st.checkbox(
+                "Cửa số trượt",
+                value=st.session_state.get("sliding_window_mode_widget", True),
+                key="sliding_window_mode_widget",
+                on_change=_on_sliding_change,
+            )
+            summarization_mode = st.checkbox(
+                "Tóm tắt",
+                value=st.session_state.get("summarization_mode_widget", False),
+                key="summarization_mode_widget",
+                on_change=_on_summarization_change,
+            )
         
     state = {
         "api_key": api_key,
         "temperature": temperature,
         "max_output_tokens": max_output_tokens,
         "custom_instructions": custom_instructions,
+        "sliding_window_mode": sliding_window_mode,
+        "summarization_mode": summarization_mode,
     }
     return state
 
