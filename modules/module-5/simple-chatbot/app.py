@@ -34,8 +34,13 @@ def main():
                     stream=sidebar_state["streaming_mode"],
                     temperature=sidebar_state["temperature"]
                 )
-                with st.spinner("Đang phản hồi..."):
-                    display_response(response) if not sidebar_state["streaming_mode"] else display_streaming_response(response)
+                if not sidebar_state["streaming_mode"]:
+                    with st.spinner("Đang phản hồi..."):
+                        display_response(response)
+                else:
+                    assistant_msg = display_streaming_response(response)
+                    if assistant_msg:
+                        st.session_state["chat_history"].append(assistant_msg)
             except Exception as e:
                 st.error(f"❌ [ERROR] {str(e)}")
 

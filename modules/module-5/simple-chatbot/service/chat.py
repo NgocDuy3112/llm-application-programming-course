@@ -45,6 +45,8 @@ class ChatService:
             input=self.conversation_history,
             **kwargs
         )
+        if not hasattr(response, "output"):
+            return response
         self.conversation_history.append(self._convert_response_to_dict(response))
         return response
 
@@ -73,6 +75,8 @@ class SlidingWindowChatService(ChatService):
             input=context_to_send,
             **kwargs
         )
+        if not hasattr(response, "output"):
+            return response
         self.conversation_history.append(self._convert_response_to_dict(response))
         return response
 
@@ -136,5 +140,7 @@ class SummarizationChatService(ChatService):
             input=self.conversation_history,
             **kwargs
         )
+        if not hasattr(resp, "output"):
+            return resp
         self.conversation_history.append(self._convert_response_to_dict(resp))
         return resp

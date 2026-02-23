@@ -32,21 +32,47 @@ def display_response(response) -> None:
 
 
 
-def display_streaming_response(response_generator) -> None:
-    response_container = st.empty()
+def display_streaming_response(response_generator) -> dict | None:
+    """Consume a streaming response and render it incrementally.
+
+    Returns a dict suitable for appending to `chat_history` when the stream completes.
+    """
+    # Separate placeholders so reasoning and content don't overwrite each other
+    content_placeholder = st.empty()
+    reasoning_placeholder = st.empty()
+    reasoning_expander = None
     reasoning_content_response = ""
     content_response = ""
+
     for event in response_generator:
-        match event.type:
-            case OpenAIResponseAPIStreamingState.REASONING_IN_PROGRESS:
-                reasoning_content_response += event.delta
-                with response_container.expander("REASONING"):
-                    st.markdown(reasoning_content_response)
-            case OpenAIResponseAPIStreamingState.TEXT_STREAMING_IN_PROGRESS:
-                content_response += event.delta
-                response_container.markdown(content_response)
-            case OpenAIResponseAPIStreamingState.RESPONSE_COMPLETED:
-                break
+        # event.type can be one of our enum values
+        etype = getattr(event, "type", None)
+
+        if etype == OpenAIResponseAPIStreamingState.REASONING_IN_PROGRESS:
+            delta = getattr(event, "delta", "")
+            if delta:
+                reasoning_content_response += delta
+                if reasoning_expander is None:
+                    reasoning_expander = reasoning_placeholder.expander("REASONING")
+                reasoning_expander.markdown(reasoning_content_response)
+
+        elif etype == OpenAIResponseAPIStreamingState.TEXT_STREAMING_IN_PROGRESS:
+            delta = getattr(event, "delta", "")
+            if delta:
+                content_response += delta
+                content_placeholder.markdown(content_response)
+
+        elif etype == OpenAIResponseAPIStreamingState.RESPONSE_COMPLETED:
+            break
+
+    # Build assistant message dict to append to history
+    message = {"role": "assistant"}
+    if reasoning_content_response:
+        message["reasoning_content"] = reasoning_content_response
+    if content_response:
+        message["content"] = content_response
+
+    return message
 
 
 
