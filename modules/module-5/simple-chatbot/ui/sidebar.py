@@ -14,11 +14,11 @@ settings = Settings()
 
 def sidebar():
     with st.sidebar:
-        api_key = st.text_input(
-            "Nhập API key",
-            value=settings.GROQ_API_KEY,
-            type="password"
-        )
+        # api_key = st.text_input(
+        #     "Nhập API key",
+        #     value=settings.GROQ_API_KEY,
+        #     type="password"
+        # )
         temperature = st.slider(
             "Temperature",
             min_value=0.0,
@@ -68,7 +68,7 @@ def sidebar():
             )
         
     state = {
-        "api_key": api_key,
+        # "api_key": api_key,
         "temperature": temperature,
         "max_output_tokens": max_output_tokens,
         "custom_instructions": custom_instructions,

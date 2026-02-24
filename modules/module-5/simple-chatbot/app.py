@@ -1,6 +1,13 @@
+import os
+from rich import print
+from dotenv import load_dotenv
+
 from ui.sidebar import *
 from service.chat import *
-from rich import print
+
+
+load_dotenv(dotenv_path="../.env", override=True)
+
 
 
 def main():
@@ -9,7 +16,7 @@ def main():
         st.session_state["chat_history"] = []
     sidebar_state = sidebar()
     client = OpenAI(
-        api_key=sidebar_state["api_key"], 
+        api_key=os.getenv("GROQ_API_KEY"),
         base_url="https://api.groq.com/openai/v1"
     )
     if sidebar_state["summarization_mode"]:
