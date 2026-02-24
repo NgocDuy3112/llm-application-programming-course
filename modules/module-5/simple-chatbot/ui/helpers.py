@@ -38,8 +38,8 @@ def display_streaming_response(response_generator) -> dict | None:
     Returns a dict suitable for appending to `chat_history` when the stream completes.
     """
     # Separate placeholders so reasoning and content don't overwrite each other
-    content_placeholder = st.empty()
     reasoning_placeholder = st.empty()
+    content_placeholder = st.empty()
     reasoning_expander = None
     reasoning_content_response = ""
     content_response = ""

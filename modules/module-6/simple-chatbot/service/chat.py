@@ -1,5 +1,6 @@
 from openai import OpenAI
 from enum import Enum
+from tavily import TavilyClient
 
 from logger import ChatbotLogger
 from settings import *
@@ -27,14 +28,16 @@ class ChatService:
         api_key: str | None = None, 
         summary_turn_threshold: int = 10, 
         keep_last: int = 1, 
-        history: list | None = None
+        history: list | None = None,
+        tavily_client: TavilyClient | None = None,
     ):
         self.provider = provider
-        self.api_key = api_key if api_key is not None else "fake-api-key"
+        self.api_key = api_key if api_key is not None else ""
         self.conversation_history = history if history is not None else []
         self.summary_turn_threshold = summary_turn_threshold
         self.keep_last = keep_last
         self.history_summary = ""
+        self.tavily_client = tavily_client
         try:
             self.client = self._create_client()
         except Exception:
@@ -43,12 +46,18 @@ class ChatService:
 
     def _create_client(self):
         """Create an OpenAI client using the provider's configured base_url if set."""
+        if self.provider.api_key and not self.api_key:
+            raise ValueError(
+                f"Missing API key for provider {self.provider.value}. "
+                f"Expected env var: {self.provider.api_key}"
+            )
         try:
             base_url = self.provider.base_url
+            client_api_key = self.api_key or "not-required"
             if base_url:
-                client = OpenAI(api_key=self.api_key, base_url=base_url)
+                client = OpenAI(api_key=client_api_key, base_url=base_url)
             else:
-                client = OpenAI(api_key=self.api_key)
+                client = OpenAI(api_key=client_api_key)
             return client
         except Exception:
             # Be careful not to log secrets (api_key)
@@ -85,7 +94,17 @@ class ChatService:
             logger.exception("Failed to compress history using provider %s and model %s; history unchanged", self.provider.value, model)
             return
 
-    def response(self, model: str, instructions: str, input: str | dict, stream: bool=False, **kwargs):
+    def _search(self, query: str) -> dict:
+        return self.client.search(query=query)
+
+    def response(
+        self, 
+        model: str, 
+        instructions: str, 
+        input: str | dict, 
+        stream: bool=False, 
+        **kwargs
+    ):
         new_msg = {"role": "user", "content": input} if isinstance(input, str) else input
         self.conversation_history.append(new_msg)
 

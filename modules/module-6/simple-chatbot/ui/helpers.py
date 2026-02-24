@@ -4,10 +4,21 @@ import streamlit as st
 from settings import Settings
 from logger import ChatbotLogger
 
+from enum import Enum
+
 
 
 logger = ChatbotLogger.get_logger("streamlit_handlers")
-settings = Settings()
+
+
+
+class OpenAIResponseAPIStreamingState(str, Enum):
+    TEXT_STREAMING_IN_PROGRESS = "response.output_text.delta"
+    TEXT_STREAMING_DONE = "response.output_text.done"
+    REASONING_IN_PROGRESS = "response.reasoning_text.delta"
+    REASONING_DONE = "response.reasoning_text.done"
+    RESPONSE_COMPLETED = "response.completed"
+    RESPONSE_INCOMPLETED = "response.incomplete"
 
 
 
@@ -74,29 +85,75 @@ def disable_streaming_when_structured() -> None:
 
 
 
-def display_response(content: str) -> None:
-    if content.startswith("[ERROR]"):
-        st.error(content.replace("[ERROR] ", "❌ "))
-    elif content.strip().startswith("{") and content.strip().endswith("}"):
-        json_data = json.loads(content)
-        st.json(json_data)
-    else:
-        st.markdown(content)
+def display_response(response) -> None:
+    for block in response.output:
+        content = block.content[0].text
+        match block.type:
+            case 'reasoning':
+                if (summary := block.summary or content):
+                    with st.expander("REASONING"):
+                        st.markdown(summary)
+            case 'message':
+                if content.startswith("{") and content.endswith("}"):
+                    json_data = json.loads(content)
+                    st.json(json_data)
+                else:
+                    st.markdown(content)
+            case _:
+                st.error(f"❌ [ERROR] Unsupported block type: {block.type}")
 
 
 
-def display_streaming_response(stream_generator) -> None:
-    """Display streaming response in Streamlit chat message.
+def display_streaming_response(response_generator) -> dict | None:
+    """Consume a streaming response and render it incrementally.
 
-    Args:
-        stream_generator: Generator yielding chunks of response text
+    Returns a dict suitable for appending to `chat_history` when the stream completes.
     """
-    response_container = st.empty()
-    full_response = ""
-    for chunk in stream_generator:
-        full_response += chunk
-        response_container.markdown(full_response)
-    return full_response
+    # Keep text streaming incrementally; reasoning will render once at the end.
+    # Placeholder order controls visual order in Streamlit: reasoning above text.
+    reasoning_placeholder = st.empty()
+    content_placeholder = st.empty()
+    reasoning_content_response = ""
+    reasoning_final_response = ""
+    content_response = ""
+
+    for event in response_generator:
+        # event.type can be one of our enum values
+        etype = getattr(event, "type", None)
+
+        if etype == OpenAIResponseAPIStreamingState.REASONING_IN_PROGRESS:
+            delta = getattr(event, "delta", "")
+            if delta:
+                reasoning_content_response += delta
+
+        elif etype == OpenAIResponseAPIStreamingState.REASONING_DONE:
+            # Prefer final reasoning payload when available.
+            done_text = getattr(event, "text", "")
+            if done_text:
+                reasoning_final_response = done_text
+
+        elif etype == OpenAIResponseAPIStreamingState.TEXT_STREAMING_IN_PROGRESS:
+            delta = getattr(event, "delta", "")
+            if delta:
+                content_response += delta
+                content_placeholder.markdown(content_response)
+
+        elif etype == OpenAIResponseAPIStreamingState.RESPONSE_COMPLETED:
+            break
+
+    final_reasoning = (reasoning_final_response or reasoning_content_response).strip()
+    if final_reasoning:
+        with reasoning_placeholder.expander("REASONING"):
+            st.markdown(final_reasoning)
+
+    # Build assistant message dict to append to history
+    message = {"role": "assistant"}
+    if final_reasoning:
+        message["reasoning_content"] = final_reasoning
+    if content_response:
+        message["content"] = content_response
+
+    return message
 
 
 
@@ -124,7 +181,15 @@ def render_chat_history(chat_history: list[dict[str, str]]) -> None:
     """
     for msg in chat_history:
         role = msg.get("role", "user")
+        reasoning = msg.get("reasoning_content", "")
         content = msg.get("content", "")
         
         with st.chat_message(role):
-            display_response(content)
+            if reasoning:
+                with st.expander("REASONING"):
+                    st.markdown(reasoning)
+            if content.startswith("{") and content.endswith("}"):
+                json_data = json.loads(content)
+                st.json(json_data)
+            else:
+                st.markdown(content)

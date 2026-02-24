@@ -14,17 +14,10 @@ def sidebar():
         st.title("Cài đặt Chatbot")
         model_provider = st.selectbox(
             "Chọn nhà cung cấp mô hình",
-            options=list(LLMProvider),
+            options=LLMProvider.all(),
             format_func=lambda p: p.value,
             index=0,
         )
-        if model_provider.needs_api_key:
-            api_key = st.text_input(
-                "Nhập API key",
-                value=settings.GROQ_API_KEY,
-                type="password"
-            )
-        else: api_key = None
         model = st.selectbox(
             "Chọn mô hình",
             options=model_provider.default_models,
@@ -86,7 +79,6 @@ def sidebar():
         "output_schema": output_schema,
         "model_provider": model_provider,
         "model": model,
-        "api_key": api_key,
         "temperature": temperature,
         "max_output_tokens": max_output_tokens,
         "custom_instructions": custom_instructions
