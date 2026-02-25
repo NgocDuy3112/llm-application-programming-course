@@ -1,24 +1,13 @@
 import json
+import json
 import streamlit as st
 
-from settings import Settings
+from streaming_types import OpenAIResponseAPIStreamingState
 from logger import ChatbotLogger
-
-from enum import Enum
 
 
 
 logger = ChatbotLogger.get_logger("streamlit_handlers")
-
-
-
-class OpenAIResponseAPIStreamingState(str, Enum):
-    TEXT_STREAMING_IN_PROGRESS = "response.output_text.delta"
-    TEXT_STREAMING_DONE = "response.output_text.done"
-    REASONING_IN_PROGRESS = "response.reasoning_text.delta"
-    REASONING_DONE = "response.reasoning_text.done"
-    RESPONSE_COMPLETED = "response.completed"
-    RESPONSE_INCOMPLETED = "response.incomplete"
 
 
 
@@ -85,25 +74,6 @@ def disable_streaming_when_structured() -> None:
 
 
 
-def display_response(response) -> None:
-    for block in response.output:
-        content = block.content[0].text
-        match block.type:
-            case 'reasoning':
-                if (summary := block.summary or content):
-                    with st.expander("REASONING"):
-                        st.markdown(summary)
-            case 'message':
-                if content.startswith("{") and content.endswith("}"):
-                    json_data = json.loads(content)
-                    st.json(json_data)
-                else:
-                    st.markdown(content)
-            case _:
-                st.error(f"❌ [ERROR] Unsupported block type: {block.type}")
-
-
-
 def display_streaming_response(response_generator) -> dict | None:
     """Consume a streaming response and render it incrementally.
 
@@ -111,40 +81,110 @@ def display_streaming_response(response_generator) -> dict | None:
     """
     # Keep text streaming incrementally; reasoning will render once at the end.
     # Placeholder order controls visual order in Streamlit: reasoning above text.
-    reasoning_placeholder = st.empty()
+    reasoning_tool_placeholder = st.empty()
     content_placeholder = st.empty()
-    reasoning_content_response = ""
-    reasoning_final_response = ""
+    reasoning_tool_content_response = ""
+    reasoning_tool_final_response = ""
     content_response = ""
+    tool_call_trace: list[dict[str, object]] = []
 
     for event in response_generator:
         # event.type can be one of our enum values
         etype = getattr(event, "type", None)
 
-        if etype == OpenAIResponseAPIStreamingState.REASONING_IN_PROGRESS:
-            delta = getattr(event, "delta", "")
-            if delta:
-                reasoning_content_response += delta
+        match etype:
+            case (
+                OpenAIResponseAPIStreamingState.RESPONSE_REASONING_TEXT_DELTA
+                | OpenAIResponseAPIStreamingState.RESPONSE_REASONING_SUMMARY_TEXT_DELTA
+            ):
+                delta = getattr(event, "delta", "")
+                if delta:
+                    reasoning_tool_content_response += delta
+                    # Update the reasoning placeholder live so the UI shows
+                    # intermediate reasoning while streaming. Show the
+                    # reasoning text first, then the tool call list.
+                    if reasoning_tool_content_response or tool_call_trace:
+                        with reasoning_tool_placeholder.expander("PROCESSING", expanded=True):
+                            if reasoning_tool_content_response:
+                                st.markdown(reasoning_tool_content_response)
+                            if tool_call_trace:
+                                st.markdown("**Các công cụ đã gọi:**")
+                                for call in tool_call_trace:
+                                    args = call.get("arguments", {})
+                                    args_text = json.dumps(args, ensure_ascii=False, indent=2) if args else "{}"
+                                    st.markdown(f"- **{call.get('name', 'Không rõ')}**")
+                                    st.code(args_text, language="json")
 
-        elif etype == OpenAIResponseAPIStreamingState.REASONING_DONE:
-            # Prefer final reasoning payload when available.
-            done_text = getattr(event, "text", "")
-            if done_text:
-                reasoning_final_response = done_text
+            case (
+                OpenAIResponseAPIStreamingState.RESPONSE_REASONING_TEXT_DONE
+                | OpenAIResponseAPIStreamingState.RESPONSE_REASONING_SUMMARY_TEXT_DONE
+                | OpenAIResponseAPIStreamingState.RESPONSE_OUTPUT_ITEM_DONE
+            ):
+                # Prefer final reasoning payload when available.
+                done_text = getattr(event, "text", "")
+                if done_text:
+                    reasoning_tool_final_response = done_text
 
-        elif etype == OpenAIResponseAPIStreamingState.TEXT_STREAMING_IN_PROGRESS:
-            delta = getattr(event, "delta", "")
-            if delta:
-                content_response += delta
-                content_placeholder.markdown(content_response)
+                # Capture tool call details from output items when present.
+                item = getattr(event, "item", None) or getattr(event, "output_item", None)
+                if item:
+                    item_type = getattr(item, "type", None)
+                    if item_type in ("function_call", "tool_call"):
+                        raw_args = getattr(item, "arguments", None)
+                        try:
+                            parsed_args = json.loads(raw_args) if isinstance(raw_args, str) else raw_args
+                            if parsed_args is None:
+                                parsed_args = {}
+                        except Exception:
+                            parsed_args = {"_raw": raw_args}
 
-        elif etype == OpenAIResponseAPIStreamingState.RESPONSE_COMPLETED:
-            break
+                        tool_call_trace.append({
+                            "name": getattr(item, "name", ""),
+                            "arguments": parsed_args,
+                        })
 
-    final_reasoning = (reasoning_final_response or reasoning_content_response).strip()
-    if final_reasoning:
-        with reasoning_placeholder.expander("REASONING"):
-            st.markdown(final_reasoning)
+                # Update reasoning placeholder when a tool call completes or
+                # when final reasoning text arrives so the UI reflects progress.
+                if reasoning_tool_final_response or tool_call_trace:
+                    with reasoning_tool_placeholder.expander("REASONING", expanded=True):
+                        if reasoning_tool_final_response:
+                            st.markdown(reasoning_tool_final_response)
+                        if tool_call_trace:
+                            st.markdown("**Các công cụ đã gọi:**")
+                            for call in tool_call_trace:
+                                args = call.get("arguments", {})
+                                args_text = json.dumps(args, ensure_ascii=False, indent=2) if args else "{}"
+                                st.markdown(f"- **{call.get('name', 'Không rõ')}**")
+                                st.code(args_text, language="json")
+
+            case OpenAIResponseAPIStreamingState.RESPONSE_OUTPUT_TEXT_DELTA:
+                delta = getattr(event, "delta", "")
+                if delta:
+                    content_response += delta
+                    content_placeholder.markdown(content_response)
+
+            case OpenAIResponseAPIStreamingState.RESPONSE_OUTPUT_TEXT_DONE:
+                done_text = getattr(event, "text", "")
+                if done_text:
+                    content_response = done_text
+
+            case OpenAIResponseAPIStreamingState.RESPONSE_COMPLETED:
+                # Do not stop on intermediate completion events; tool flows
+                # can emit additional cycles with the final assistant text.
+                continue
+
+    final_reasoning = reasoning_tool_final_response.strip()
+    if final_reasoning or tool_call_trace:
+        with reasoning_tool_placeholder.expander("REASONING", expanded=True):
+            if final_reasoning:
+                st.markdown(final_reasoning)
+            if tool_call_trace:
+                st.markdown("**Các công cụ đã gọi:**")
+                for call in tool_call_trace:
+                    args = call.get("arguments", {})
+                    args_text = json.dumps(args, ensure_ascii=False, indent=2) if args else "{}"
+                    st.markdown(f"- **{call.get('name', 'Không rõ')}**")
+                    st.code(args_text, language="json")
 
     # Build assistant message dict to append to history
     message = {"role": "assistant"}
@@ -152,6 +192,14 @@ def display_streaming_response(response_generator) -> dict | None:
         message["reasoning_content"] = final_reasoning
     if content_response:
         message["content"] = content_response
+    if tool_call_trace:
+        message["tool_trace"] = tool_call_trace
+
+    # Remember whether this assistant message should show the REASONING
+    # expander open by default. We keep it open for messages that include
+    # reasoning text or tool calls; it will be collapsed on the next user
+    # input via the app-level session flag.
+    message["expand_reasoning"] = bool(final_reasoning or tool_call_trace)
 
     return message
 
@@ -184,10 +232,24 @@ def render_chat_history(chat_history: list[dict[str, str]]) -> None:
         reasoning = msg.get("reasoning_content", "")
         content = msg.get("content", "")
         
+        tool_trace = msg.get("tool_trace", [])
         with st.chat_message(role):
-            if reasoning:
-                with st.expander("REASONING"):
-                    st.markdown(reasoning)
+            if reasoning or tool_trace:
+                # Determine whether the expander should be open. The app sets
+                # `collapse_reasoning` in session state when the user submits a
+                # new message to collapse previous reasoning boxes.
+                collapse_all = st.session_state.get("collapse_reasoning", False)
+                expanded = msg.get("expand_reasoning", False) and not collapse_all
+                with st.expander("REASONING", expanded=expanded):
+                    if reasoning:
+                        st.markdown(reasoning)
+                    if tool_trace:
+                        st.markdown("**Các công cụ đã gọi:**")
+                        for call in tool_trace:
+                            args = call.get("arguments", {})
+                            args_text = json.dumps(args, ensure_ascii=False, indent=2) if args else "{}"
+                            st.markdown(f"- **{call.get('name', 'Không rõ')}**")
+                            st.code(args_text, language="json")
             if content.startswith("{") and content.endswith("}"):
                 json_data = json.loads(content)
                 st.json(json_data)
