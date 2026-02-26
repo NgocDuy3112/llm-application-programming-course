@@ -104,7 +104,7 @@ def display_streaming_response(response_generator) -> dict | None:
                     # intermediate reasoning while streaming. Show the
                     # reasoning text first, then the tool call list.
                     if reasoning_tool_content_response or tool_call_trace:
-                        with reasoning_tool_placeholder.expander("PROCESSING", expanded=True):
+                        with reasoning_tool_placeholder.expander("PROCESSING", expanded=False):
                             if reasoning_tool_content_response:
                                 st.markdown(reasoning_tool_content_response)
                             if tool_call_trace:
@@ -146,7 +146,7 @@ def display_streaming_response(response_generator) -> dict | None:
                 # Update reasoning placeholder when a tool call completes or
                 # when final reasoning text arrives so the UI reflects progress.
                 if reasoning_tool_final_response or tool_call_trace:
-                    with reasoning_tool_placeholder.expander("REASONING", expanded=True):
+                    with reasoning_tool_placeholder.expander("PROCESSING", expanded=False):
                         if reasoning_tool_final_response:
                             st.markdown(reasoning_tool_final_response)
                         if tool_call_trace:
@@ -154,7 +154,7 @@ def display_streaming_response(response_generator) -> dict | None:
                             for call in tool_call_trace:
                                 args = call.get("arguments", {})
                                 args_text = json.dumps(args, ensure_ascii=False, indent=2) if args else "{}"
-                                st.markdown(f"- **{call.get('name', 'Không rõ')}**")
+                                st.markdown(f"⚒️ **{call.get('name', 'Không rõ')}**")
                                 st.code(args_text, language="json")
 
             case OpenAIResponseAPIStreamingState.RESPONSE_OUTPUT_TEXT_DELTA:
@@ -175,7 +175,7 @@ def display_streaming_response(response_generator) -> dict | None:
 
     final_reasoning = reasoning_tool_final_response.strip()
     if final_reasoning or tool_call_trace:
-        with reasoning_tool_placeholder.expander("REASONING", expanded=True):
+        with reasoning_tool_placeholder.expander("PROCESSING", expanded=False):
             if final_reasoning:
                 st.markdown(final_reasoning)
             if tool_call_trace:
@@ -195,11 +195,8 @@ def display_streaming_response(response_generator) -> dict | None:
     if tool_call_trace:
         message["tool_trace"] = tool_call_trace
 
-    # Remember whether this assistant message should show the REASONING
-    # expander open by default. We keep it open for messages that include
-    # reasoning text or tool calls; it will be collapsed on the next user
-    # input via the app-level session flag.
-    message["expand_reasoning"] = bool(final_reasoning or tool_call_trace)
+    # Keep PROCESSING collapsed by default for streamed responses.
+    message["expand_processing"] = False
 
     return message
 
@@ -236,11 +233,11 @@ def render_chat_history(chat_history: list[dict[str, str]]) -> None:
         with st.chat_message(role):
             if reasoning or tool_trace:
                 # Determine whether the expander should be open. The app sets
-                # `collapse_reasoning` in session state when the user submits a
-                # new message to collapse previous reasoning boxes.
-                collapse_all = st.session_state.get("collapse_reasoning", False)
-                expanded = msg.get("expand_reasoning", False) and not collapse_all
-                with st.expander("REASONING", expanded=expanded):
+                # `collapse_processing` in session state when the user submits a
+                # new message to collapse previous processing boxes.
+                collapse_all = st.session_state.get("collapse_processing", False)
+                expanded = msg.get("expand_processing", False) and not collapse_all
+                with st.expander("PROCESSING", expanded=expanded):
                     if reasoning:
                         st.markdown(reasoning)
                     if tool_trace:

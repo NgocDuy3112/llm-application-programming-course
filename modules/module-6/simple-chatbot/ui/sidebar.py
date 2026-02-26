@@ -1,6 +1,6 @@
 from ui.helpers import *
-from settings import LLMProvider
-from service.chat import *
+from settings import LLMProvider, Settings
+from logger import ChatbotLogger
 
 
 
@@ -12,12 +12,13 @@ settings = Settings()
 def sidebar():
     with st.sidebar:
         st.title("Cài đặt Chatbot")
-        model_provider = st.selectbox(
+        provider_names = LLMProvider.values()
+        model_provider_name = st.selectbox(
             "Chọn nhà cung cấp mô hình",
-            options=LLMProvider.all(),
-            format_func=lambda p: p.value,
+            options=provider_names,
             index=0,
         )
+        model_provider = LLMProvider(model_provider_name)
         model = st.selectbox(
             "Chọn mô hình",
             options=model_provider.default_models,

@@ -40,7 +40,7 @@ def main():
         st.session_state["pending_input"] = user_input
         st.session_state["is_generating"] = True
         # Collapse existing REASONING expanders when the user submits a new message.
-        st.session_state["collapse_reasoning"] = True
+        st.session_state["collapse_processing"] = True
         st.rerun()
 
     if st.session_state.get("is_generating") and st.session_state.get("pending_input"):
@@ -62,7 +62,7 @@ def main():
                     st.session_state["chat_history"].append(assistant_msg)
                     # New assistant message should show its reasoning expander;
                     # clear the collapse flag so this message's expander remains open.
-                    st.session_state["collapse_reasoning"] = False
+                    st.session_state["collapse_processing"] = False
             except Exception as e:
                 logger.exception("Streaming error: %s", e)
                 st.error(f"❌ [ERROR] {str(e)}")

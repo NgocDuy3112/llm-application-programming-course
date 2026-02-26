@@ -1,15 +1,6 @@
 import json
 import streamlit as st
-from enum import Enum
-
-
-class OpenAIResponseAPIStreamingState(str, Enum):
-    TEXT_STREAMING_IN_PROGRESS = "response.output_text.delta"
-    TEXT_STREAMING_DONE = "response.output_text.done"
-    REASONING_IN_PROGRESS = "response.reasoning_text.delta"
-    REASONING_DONE = "response.reasoning_text.done"
-    RESPONSE_COMPLETED = "response.completed"
-    RESPONSE_INCOMPLETED = "response.incomplete"
+from streaming_types import OpenAIResponseAPIStreamingState
 
 
 
@@ -19,7 +10,7 @@ def display_response(response) -> None:
         match block.type:
             case 'reasoning':
                 if (summary := block.summary or content):
-                    with st.expander("REASONING"):
+                    with st.expander("PROCESSING"):
                         st.markdown(summary)
             case 'message':
                 if content.startswith("{") and content.endswith("}"):
@@ -47,23 +38,23 @@ def display_streaming_response(response_generator) -> dict | None:
     for event in response_generator:
         # event.type can be one of our enum values
         etype = getattr(event, "type", None)
-
-        if etype == OpenAIResponseAPIStreamingState.REASONING_IN_PROGRESS:
-            delta = getattr(event, "delta", "")
-            if delta:
-                reasoning_content_response += delta
-                if reasoning_expander is None:
-                    reasoning_expander = reasoning_placeholder.expander("REASONING")
+        match etype:
+            case OpenAIResponseAPIStreamingState.RESPONSE_REASONING_TEXT_DELTA:
+                delta = getattr(event, "delta", "")
+                if delta:
+                    reasoning_content_response += delta
+                    if reasoning_expander is None:
+                        reasoning_expander = reasoning_placeholder.expander("PROCESSING")
                 reasoning_expander.markdown(reasoning_content_response)
 
-        elif etype == OpenAIResponseAPIStreamingState.TEXT_STREAMING_IN_PROGRESS:
-            delta = getattr(event, "delta", "")
-            if delta:
-                content_response += delta
-                content_placeholder.markdown(content_response)
+            case OpenAIResponseAPIStreamingState.RESPONSE_OUTPUT_TEXT_DELTA:
+                delta = getattr(event, "delta", "")
+                if delta:
+                    content_response += delta
+                    content_placeholder.markdown(content_response)
 
-        elif etype == OpenAIResponseAPIStreamingState.RESPONSE_COMPLETED:
-            break
+            case OpenAIResponseAPIStreamingState.RESPONSE_COMPLETED:
+                break
 
     # Build assistant message dict to append to history
     message = {"role": "assistant"}
@@ -90,7 +81,7 @@ def render_chat_history(chat_history: list[dict[str, str]]) -> None:
         
         with st.chat_message(role):
             if reasoning:
-                with st.expander("REASONING"):
+                with st.expander("PROCESSING"):
                     st.markdown(reasoning)
             if content.startswith("{") and content.endswith("}"):
                 json_data = json.loads(content)
