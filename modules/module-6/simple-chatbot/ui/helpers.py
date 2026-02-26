@@ -87,6 +87,7 @@ def display_streaming_response(response_generator) -> dict | None:
     reasoning_tool_final_response = ""
     content_response = ""
     tool_call_trace: list[dict[str, object]] = []
+    output_text_started = False
 
     for event in response_generator:
         # event.type can be one of our enum values
@@ -104,7 +105,7 @@ def display_streaming_response(response_generator) -> dict | None:
                     # intermediate reasoning while streaming. Show the
                     # reasoning text first, then the tool call list.
                     if reasoning_tool_content_response or tool_call_trace:
-                        with reasoning_tool_placeholder.expander("PROCESSING", expanded=False):
+                        with reasoning_tool_placeholder.expander("PROCESSING", expanded=not output_text_started):
                             if reasoning_tool_content_response:
                                 st.markdown(reasoning_tool_content_response)
                             if tool_call_trace:
@@ -146,7 +147,7 @@ def display_streaming_response(response_generator) -> dict | None:
                 # Update reasoning placeholder when a tool call completes or
                 # when final reasoning text arrives so the UI reflects progress.
                 if reasoning_tool_final_response or tool_call_trace:
-                    with reasoning_tool_placeholder.expander("PROCESSING", expanded=False):
+                    with reasoning_tool_placeholder.expander("PROCESSING", expanded=not output_text_started):
                         if reasoning_tool_final_response:
                             st.markdown(reasoning_tool_final_response)
                         if tool_call_trace:
@@ -160,6 +161,21 @@ def display_streaming_response(response_generator) -> dict | None:
             case OpenAIResponseAPIStreamingState.RESPONSE_OUTPUT_TEXT_DELTA:
                 delta = getattr(event, "delta", "")
                 if delta:
+                    if not output_text_started:
+                        output_text_started = True
+                        # Collapse PROCESSING exactly when output text starts streaming.
+                        if reasoning_tool_content_response or reasoning_tool_final_response or tool_call_trace:
+                            with reasoning_tool_placeholder.expander("PROCESSING", expanded=False):
+                                reasoning_to_show = reasoning_tool_final_response or reasoning_tool_content_response
+                                if reasoning_to_show:
+                                    st.markdown(reasoning_to_show)
+                                if tool_call_trace:
+                                    st.markdown("**Các công cụ đã gọi:**")
+                                    for call in tool_call_trace:
+                                        args = call.get("arguments", {})
+                                        args_text = json.dumps(args, ensure_ascii=False, indent=2) if args else "{}"
+                                        st.markdown(f"- **{call.get('name', 'Không rõ')}**")
+                                        st.code(args_text, language="json")
                     content_response += delta
                     content_placeholder.markdown(content_response)
 
@@ -175,7 +191,7 @@ def display_streaming_response(response_generator) -> dict | None:
 
     final_reasoning = reasoning_tool_final_response.strip()
     if final_reasoning or tool_call_trace:
-        with reasoning_tool_placeholder.expander("PROCESSING", expanded=False):
+        with reasoning_tool_placeholder.expander("PROCESSING", expanded=not output_text_started):
             if final_reasoning:
                 st.markdown(final_reasoning)
             if tool_call_trace:
@@ -195,8 +211,8 @@ def display_streaming_response(response_generator) -> dict | None:
     if tool_call_trace:
         message["tool_trace"] = tool_call_trace
 
-    # Keep PROCESSING collapsed by default for streamed responses.
-    message["expand_processing"] = False
+    # Only collapse by default when output_text has started streaming.
+    message["expand_processing"] = bool(final_reasoning or tool_call_trace) and not output_text_started
 
     return message
 

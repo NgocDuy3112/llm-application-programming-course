@@ -110,37 +110,82 @@ class ChatService:
         Requirement: only Groq receives tools schema. Non-Groq providers
         receive no tools schema.
         """
-        is_groq = isinstance(self.provider, LLMProvider) and (str(self.provider.value).lower() == "groq")
+        provider_name = str(self.provider.value).lower() if isinstance(self.provider, LLMProvider) else str(self.provider).lower()
+        is_groq = provider_name == "groq"
+        is_ollama = provider_name == "ollama"
 
-        # Per requirement: only use tool schema with Groq.
-        if not is_groq:
-            logger.debug("[%s] Provider=%s: disabling tools schema (tools=[])", request_id, self.provider.value)
-            return []
+        # Groq: accept Groq/Harmony top-level tool schema
+        if is_groq:
+            tools_param = tools or []
+            valid_tools: list[dict] = []
+            for idx, tool in enumerate(tools_param):
+                if not isinstance(tool, dict):
+                    logger.warning("[%s] Provider=%s: skip invalid tool at index=%d (not a dict)", request_id, self.provider.value, idx)
+                    continue
+                if tool.get("type") == "function" and not tool.get("name"):
+                    logger.warning(
+                        "[%s] Provider=%s: skip invalid function tool at index=%d (missing top-level name)",
+                        request_id,
+                        self.provider.value,
+                        idx,
+                    )
+                    continue
+                valid_tools.append(tool)
 
-        tools_param = tools or []
-        valid_tools: list[dict] = []
-        for idx, tool in enumerate(tools_param):
-            if not isinstance(tool, dict):
-                logger.warning("[%s] Provider=%s: skip invalid tool at index=%d (not a dict)", request_id, self.provider.value, idx)
-                continue
-            if tool.get("type") == "function" and not tool.get("name"):
-                logger.warning(
-                    "[%s] Provider=%s: skip invalid function tool at index=%d (missing top-level name)",
-                    request_id,
-                    self.provider.value,
-                    idx,
-                )
-                continue
-            valid_tools.append(tool)
+            logger.debug(
+                "[%s] Provider=%s: using original tools schema valid_count=%d input_count=%d",
+                request_id,
+                self.provider.value,
+                len(valid_tools),
+                len(tools_param),
+            )
+            return valid_tools
 
-        logger.debug(
-            "[%s] Provider=%s: using original tools schema valid_count=%d input_count=%d",
-            request_id,
-            self.provider.value,
-            len(valid_tools),
-            len(tools_param),
-        )
-        return valid_tools
+        # Ollama: map tools to an OpenAI-style shape (nested 'function' wrapper)
+        if is_ollama:
+            tools_param = tools or []
+            valid_tools: list[dict] = []
+            for idx, tool in enumerate(tools_param):
+                if not isinstance(tool, dict):
+                    logger.warning("[%s] Provider=%s: skip invalid tool at index=%d (not a dict)", request_id, self.provider.value, idx)
+                    continue
+
+                # If already OpenAI-style (has a nested 'function' dict), keep as-is
+                if tool.get("type") == "function" and isinstance(tool.get("function"), dict):
+                    valid_tools.append(tool)
+                    continue
+
+                # If it's a non-function tool, pass through
+                if tool.get("type") != "function":
+                    valid_tools.append(tool)
+                    continue
+
+                # Otherwise, wrap top-level fields into the nested 'function' form
+                fn: dict = {}
+                if "name" in tool:
+                    fn["name"] = tool.get("name")
+                if "description" in tool:
+                    fn["description"] = tool.get("description")
+                if "parameters" in tool:
+                    fn["parameters"] = tool.get("parameters")
+                if "strict" in tool:
+                    fn["strict"] = tool.get("strict")
+
+                wrapped = {"type": tool.get("type", "function"), "function": fn}
+                valid_tools.append(wrapped)
+
+            logger.debug(
+                "[%s] Provider=%s: using OpenAI-style tools valid_count=%d input_count=%d",
+                request_id,
+                self.provider.value,
+                len(valid_tools),
+                len(tools_param),
+            )
+            return valid_tools
+
+        # Default: disable tools schema for other providers
+        logger.debug("[%s] Provider=%s: disabling tools schema (tools=[])", request_id, self.provider.value)
+        return []
 
     def _parse_tool_args(self, raw_arguments: Any) -> dict:
         """Parse function/tool call arguments into a dict, best-effort."""
@@ -290,7 +335,7 @@ class ChatService:
 
         return executed_tool_outputs, tool_calls
 
-    def _build_fallback_event_and_message(self, request_id: str, executed_tool_outputs: dict[str, str]) -> tuple[dict, Any]:
+    def _build_fallback_event_and_message(self, executed_tool_outputs: dict[str, str]) -> tuple[dict, Any]:
         """Create a fallback assistant message and a synthetic streaming event.
 
         Returned tuple: (assistant_message_dict, synthetic_event)
@@ -367,7 +412,14 @@ class ChatService:
                 tools_list.append(top_name or nested_name)
             else:
                 tools_list.append(str(t))
-        logger.info("[%s] Starting response: provider=%s model=%s messages=%d last_input_len=%d streaming=%s tools=%s summary_present=%s", request_id, self.provider.value, model, len(request_input), len(str(input)) if isinstance(input, str) else 0, True, tools_list, bool(self.history_summary))
+        logger.info(
+            "[%s] Starting response: provider=%s model=%s messages=%d last_input_len=%d streaming=%s tools=%s summary_present=%s", 
+            request_id, 
+            self.provider.value, 
+            model, 
+            len(request_input), 
+            len(str(input)) if isinstance(input, str) else 0, True, tools_list, bool(self.history_summary)
+        )
 
         # Deduplicate tool executions within a single response loop to avoid
         # runaway repeated calls when the model re-requests the same tool.
@@ -392,7 +444,7 @@ class ChatService:
                         yield event
                 except Exception:
                     logger.exception("[%s] Final synthesis pass failed; fallback to aggregated tool results", request_id)
-                    assistant_msg, synthetic_event = self._build_fallback_event_and_message(request_id, executed_tool_outputs)
+                    assistant_msg, synthetic_event = self._build_fallback_event_and_message(executed_tool_outputs)
                     try:
                         self.conversation_history.append(assistant_msg)
                     except Exception:
@@ -403,14 +455,19 @@ class ChatService:
             # run a single response cycle
             try:
                 tools_param = self._get_tools_param(tools, request_id)
-                stream = self.client.responses.create(
-                    model=model,
-                    instructions=eff_instructions,
-                    input=request_input,
-                    tools=tools_param,
-                    stream=True,
-                    **kwargs,
-                )
+
+                provider_name = str(self.provider.value).lower() if isinstance(self.provider, LLMProvider) else str(self.provider).lower()
+                call_kwargs = {
+                    "model": model,
+                    "instructions": eff_instructions,
+                    "input": request_input,
+                    "stream": True,
+                }
+                # preserve extra kwargs (e.g., temperature) but don't overwrite our explicit keys
+                call_kwargs.update({k: v for k, v in kwargs.items() if k not in call_kwargs})
+
+                logger.debug("[%s] Calling responses.create with keys=%s", request_id, list(call_kwargs.keys()))
+                stream = self.client.responses.create(**call_kwargs)
 
                 detected_calls: list[dict[str, Any]] = []
                 assistant_output_text = ""

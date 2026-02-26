@@ -88,5 +88,5 @@ DEFAULT_TOOLS = [
             },
             "required": ["query"],
         }
-    }
+    },
 ]
