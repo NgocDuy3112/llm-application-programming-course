@@ -10,16 +10,16 @@
     - qwen/qwen3-32b
   api_key: GROQ_API_KEY
   base_url: https://api.groq.com/openai/v1
-- name: Ollama
-  default_models:
-    - qwen3:4b
-    - qwen3:1.7b
-    - gemma3:1b
-    - deepseek-r1:1.5b
-    - llama3.2:1b
-  api_key: null
-  base_url: http://localhost:11434/v1
-# - name: Gemini
+# - name: Ollama
+#   default_models:
+#     - qwen3:4b
+#     - qwen3:1.7b
+#     - gemma3:1b
+#     - deepseek-r1:1.5b
+#     - llama3.2:1b
+#   api_key: null
+#   base_url: http://localhost:11434/v1
+# # - name: Gemini
 #   default_models:
 #     - gemini-2.5-flash
 #     - gemini-2.5-pro
