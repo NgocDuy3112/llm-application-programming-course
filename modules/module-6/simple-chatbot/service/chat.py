@@ -22,7 +22,7 @@ class ChatService:
     DEFAULT_INSTRUCTIONS = """
     Bạn là một trợ lý ảo thông minh và hữu ích, luôn cố gắng cung cấp câu trả lời chính xác và đầy đủ nhất cho người dùng.
     Bạn được cung cấp một số thông tin về bối cảnh và lịch sử hội thoại trước đó, hãy sử dụng chúng để hiểu rõ hơn về yêu cầu của người dùng và trả lời một cách phù hợp.
-    Ngoài ra, bạn có thể sử dụng các công cụ tìm kiếm để tra cứu thông tin nếu cần thiết. Luôn thay đổi truy vấn tìm kiếm để có được kết quả tốt nhất, và chỉ sử dụng công cụ tìm kiếm khi bạn thực sự cần thông tin cập nhật hoặc chi tiết mà bạn không chắc chắn. Đảm bảo rằng câu trả lời của bạn dựa trên thông tin đã biết và các công cụ tìm kiếm một cách cân bằng.
+    Ngoài ra, bạn có thể sử dụng công cụ tìm kiếm tavily_search để tra cứu thông tin nếu cần thiết. Luôn thay đổi truy vấn tìm kiếm để có được kết quả tốt nhất, và chỉ sử dụng công cụ tavily_search khi bạn thực sự cần thông tin cập nhật hoặc chi tiết mà bạn không chắc chắn. Đảm bảo rằng câu trả lời của bạn dựa trên thông tin đã biết và tavily_search một cách cân bằng.
     """
 
     def __init__(
@@ -105,87 +105,29 @@ class ChatService:
 
     # --- Refactor helpers -------------------------------------------------
     def _get_tools_param(self, tools: list | None, request_id: str) -> list | None:
-        """Return provider-appropriate tools parameter.
+        """Return the tools parameter exactly as provided.
 
-        Requirement: only Groq receives tools schema. Non-Groq providers
-        receive no tools schema.
+        Groq expects nested schema ("function": {...}), so we do not
+        perform any internal normalization.  The caller is responsible for
+        supplying correctly shaped objects.
         """
-        provider_name = str(self.provider.value).lower() if isinstance(self.provider, LLMProvider) else str(self.provider).lower()
-        is_groq = provider_name == "groq"
-        is_ollama = provider_name == "ollama"
 
-        # Groq: accept Groq/Harmony top-level tool schema
-        if is_groq:
-            tools_param = tools or []
-            valid_tools: list[dict] = []
-            for idx, tool in enumerate(tools_param):
-                if not isinstance(tool, dict):
-                    logger.warning("[%s] Provider=%s: skip invalid tool at index=%d (not a dict)", request_id, self.provider.value, idx)
-                    continue
-                if tool.get("type") == "function" and not tool.get("name"):
-                    logger.warning(
-                        "[%s] Provider=%s: skip invalid function tool at index=%d (missing top-level name)",
-                        request_id,
-                        self.provider.value,
-                        idx,
-                    )
-                    continue
-                valid_tools.append(tool)
-
-            logger.debug(
-                "[%s] Provider=%s: using original tools schema valid_count=%d input_count=%d",
-                request_id,
-                self.provider.value,
-                len(valid_tools),
-                len(tools_param),
-            )
-            return valid_tools
-
-        # Ollama: map tools to an OpenAI-style shape (nested 'function' wrapper)
-        if is_ollama:
-            tools_param = tools or []
-            valid_tools: list[dict] = []
-            for idx, tool in enumerate(tools_param):
-                if not isinstance(tool, dict):
-                    logger.warning("[%s] Provider=%s: skip invalid tool at index=%d (not a dict)", request_id, self.provider.value, idx)
-                    continue
-
-                # If already OpenAI-style (has a nested 'function' dict), keep as-is
-                if tool.get("type") == "function" and isinstance(tool.get("function"), dict):
-                    valid_tools.append(tool)
-                    continue
-
-                # If it's a non-function tool, pass through
-                if tool.get("type") != "function":
-                    valid_tools.append(tool)
-                    continue
-
-                # Otherwise, wrap top-level fields into the nested 'function' form
-                fn: dict = {}
-                if "name" in tool:
-                    fn["name"] = tool.get("name")
-                if "description" in tool:
-                    fn["description"] = tool.get("description")
-                if "parameters" in tool:
-                    fn["parameters"] = tool.get("parameters")
-                if "strict" in tool:
-                    fn["strict"] = tool.get("strict")
-
-                wrapped = {"type": tool.get("type", "function"), "function": fn}
-                valid_tools.append(wrapped)
-
-            logger.debug(
-                "[%s] Provider=%s: using OpenAI-style tools valid_count=%d input_count=%d",
-                request_id,
-                self.provider.value,
-                len(valid_tools),
-                len(tools_param),
-            )
-            return valid_tools
-
-        # Default: disable tools schema for other providers
-        logger.debug("[%s] Provider=%s: disabling tools schema (tools=[])", request_id, self.provider.value)
-        return []
+        tools_param = tools or []
+        # basic validation: warn on non-dicts but still pass through
+        for idx, tool in enumerate(tools_param):
+            if not isinstance(tool, dict):
+                logger.warning("[%s] Provider=%s: tool at index %d is not a dict, passing through", request_id, self.provider.value, idx)
+                continue
+            # ensure top-level name exists (Groq requires it)
+            if tool.get("type") == "function" and not tool.get("name"):
+                fn = tool.get("function")
+                if isinstance(fn, dict) and fn.get("name"):
+                    tool["name"] = fn.get("name")
+            # make sure nested parameters field is at least an empty object
+            fn = tool.get("function")
+            if isinstance(fn, dict) and fn.get("parameters") is None:
+                fn["parameters"] = {}
+        return tools_param
 
     def _parse_tool_args(self, raw_arguments: Any) -> dict:
         """Parse function/tool call arguments into a dict, best-effort."""
@@ -197,6 +139,17 @@ class ChatService:
         except Exception:
             return {"_raw": raw_arguments}
 
+    def _infer_tool_name(self, tool_name: Any, raw_arguments: Any) -> str | None:
+        """Infer missing tool name from payload shape/arguments."""
+        if isinstance(tool_name, str) and tool_name.strip():
+            return tool_name.strip()
+
+        parsed_args = self._parse_tool_args(raw_arguments)
+        if isinstance(parsed_args, dict) and "query" in parsed_args:
+            # Current app exposes tavily_search as the web-search tool.
+            return "tavily_search"
+        return None
+
     def _call_id_from_call(self, call: Any) -> Any:
         """Extract a stable call id from either dict-shaped or object-shaped call items."""
         try:
@@ -206,24 +159,22 @@ class ChatService:
         except Exception:
             return None
 
-    def _append_tool_output_to_request(self, request_input: list, call: Any, tool_name: str, tool_text: str) -> None:
-        """Append tool output to request_input using provider-specific shape."""
+    def _append_tool_output_to_request(self, request_input: list, call: Any, tool_text: str) -> list:
+        """Append tool output to request_input using Groq tool message shape."""
         call_id_val = self._call_id_from_call(call)
-        if isinstance(self.provider, LLMProvider) and str(self.provider.value).lower() == "groq":
-            # Groq-friendly message
-            request_input.append({
-                "role": "assistant",
-                "tool_call_id": call_id_val,
-                "name": tool_name,
-                "content": tool_text,
-            })
-        else:
-            # OpenAI-style wrapper
-            request_input.append({
-                "type": "function_call_output",
-                "call_id": call_id_val,
-                "output": tool_text,
-            })
+        request_input.append({
+            "role": "assistant",
+            "tool_call_id": call_id_val,
+            "name": call.get("name") if isinstance(call, dict) else None,
+            "content": tool_text,
+        })
+        return request_input
+
+    def _safe_get(self, obj: Any, key: str, default: Any = None) -> Any:
+        """Read value from dict-like or object-like payloads."""
+        if isinstance(obj, dict):
+            return obj.get(key, default)
+        return getattr(obj, key, default)
 
     def _handle_stream_event(self, event: Any, assistant_output_text: str, reasoning_output_text: str, detected_function_calls: list, request_id: str) -> tuple[str, str, list, bool]:
         """Process a single streaming event and update captured outputs.
@@ -231,44 +182,56 @@ class ChatService:
         Returns updated (assistant_output_text, reasoning_output_text, detected_function_calls, stop_stream_flag).
         """
         stop_stream = False
-        event_type = getattr(event, "type", None)
+        event_type = self._safe_get(event, "type", None)
         logger.debug("[%s] Stream event: %s", request_id, event_type)
 
         match event_type:
             case OpenAIResponseAPIStreamingState.RESPONSE_OUTPUT_TEXT_DELTA:
-                delta = getattr(event, "delta", "")
+                delta = self._safe_get(event, "delta", "")
                 if delta:
                     assistant_output_text += delta
 
             case OpenAIResponseAPIStreamingState.RESPONSE_OUTPUT_TEXT_DONE:
-                done_text = getattr(event, "text", "")
+                done_text = self._safe_get(event, "text", "")
                 if done_text:
                     assistant_output_text = done_text
 
             case OpenAIResponseAPIStreamingState.RESPONSE_REASONING_TEXT_DELTA | OpenAIResponseAPIStreamingState.RESPONSE_REASONING_SUMMARY_TEXT_DELTA:
-                delta = getattr(event, "delta", "")
+                delta = self._safe_get(event, "delta", "")
                 if delta:
                     reasoning_output_text += delta
 
             case OpenAIResponseAPIStreamingState.RESPONSE_REASONING_TEXT_DONE | OpenAIResponseAPIStreamingState.RESPONSE_REASONING_SUMMARY_TEXT_DONE:
-                done_text = getattr(event, "text", "")
+                done_text = self._safe_get(event, "text", "")
                 if done_text:
                     reasoning_output_text = done_text
 
             case OpenAIResponseAPIStreamingState.RESPONSE_OUTPUT_ITEM_DONE:
-                item = getattr(event, "item", None) or getattr(event, "output_item", None)
+                item = self._safe_get(event, "item", None) or self._safe_get(event, "output_item", None)
                 if not item:
                     logger.debug("[%s] OUTPUT_ITEM_DONE but no item/output_item. event=%r", request_id, event)
-                    stop_stream = True
                     return assistant_output_text, reasoning_output_text, detected_function_calls, stop_stream
-                item_type = getattr(item, "type", None)
-                if item_type in ("function_call", "tool_call"):
+
+                item_type = self._safe_get(item, "type", None)
+                function_payload = self._safe_get(item, "function", None)
+                call_name = self._safe_get(item, "name", None) or self._safe_get(item, "tool_name", None) or self._safe_get(item, "function_name", None)
+                call_arguments = self._safe_get(item, "arguments", None)
+
+                if function_payload is not None:
+                    call_name = call_name or self._safe_get(function_payload, "name", None)
+                    call_arguments = call_arguments or self._safe_get(function_payload, "arguments", None)
+
+                call_arguments = call_arguments or self._safe_get(item, "input", None) or self._safe_get(item, "tool_input", None)
+                inferred_name = self._infer_tool_name(call_name, call_arguments)
+
+                if item_type in ("function_call", "tool_call") or inferred_name:
+                    call_id = self._safe_get(item, "call_id", None) or self._safe_get(item, "id", None)
                     detected_function_calls.append({
-                        "call_id": getattr(item, "call_id"),
-                        "name": getattr(item, "name"),
-                        "arguments": getattr(item, "arguments"),
+                        "call_id": call_id,
+                        "name": inferred_name,
+                        "arguments": call_arguments,
                     })
-                    logger.info("[%s] Detected function/tool call: %s (call_id=%s)", request_id, getattr(item, "name", None), getattr(item, "call_id", None))
+                    logger.info("[%s] Detected function/tool call: %s (call_id=%s)", request_id, inferred_name, call_id)
 
             case OpenAIResponseAPIStreamingState.RESPONSE_INCOMPLETED:
                 logger.warning("[%s] Response incomplete", request_id)
@@ -297,8 +260,11 @@ class ChatService:
         tool_calls = tool_calls_start
         for call in detected_function_calls:
             tool_calls += 1
-            tool_name = call.get("name")
             raw_arguments = call.get("arguments")
+            tool_name = self._infer_tool_name(call.get("name"), raw_arguments)
+            if not tool_name:
+                logger.warning("[%s] Skip tool call without resolvable name (call=%s)", request_id, call)
+                continue
 
             tool_args = self._parse_tool_args(raw_arguments)
 
@@ -330,7 +296,7 @@ class ChatService:
                 logger.debug("[%s] Tool output for %s len=%d", request_id, tool_name, len(tool_text))
 
             # Append tool output to the request in a provider-specific format
-            self._append_tool_output_to_request(request_input, call, tool_name, tool_text)
+            request_input = self._append_tool_output_to_request(request_input, call, tool_text)
             logger.debug("[%s] Appended tool output as assistant message to request_input (messages=%d)", request_id, len(request_input))
 
         return executed_tool_outputs, tool_calls
@@ -456,12 +422,12 @@ class ChatService:
             try:
                 tools_param = self._get_tools_param(tools, request_id)
 
-                provider_name = str(self.provider.value).lower() if isinstance(self.provider, LLMProvider) else str(self.provider).lower()
                 call_kwargs = {
                     "model": model,
                     "instructions": eff_instructions,
                     "input": request_input,
                     "stream": True,
+                    "tools": tools_param,
                 }
                 # preserve extra kwargs (e.g., temperature) but don't overwrite our explicit keys
                 call_kwargs.update({k: v for k, v in kwargs.items() if k not in call_kwargs})
@@ -491,17 +457,6 @@ class ChatService:
 
                 executed_tool_outputs, tool_calls = self._process_detected_function_calls(
                     detected_calls, request_input, executed_tool_outputs, request_id, tool_calls
-                )
-
-                duration = time.time() - request_start
-                logger.info(
-                    "[%s] Response attempt finished: provider=%s model=%s duration=%.3fs tool_calls=%d request_input_messages=%d",
-                    request_id,
-                    self.provider.value,
-                    model,
-                    duration,
-                    tool_calls,
-                    len(request_input),
                 )
             except Exception as e:
                 logger.exception(
