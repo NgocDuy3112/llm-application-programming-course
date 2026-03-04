@@ -14,7 +14,7 @@ logger = ChatbotLogger.get_logger("streamlit_app")
 
 
 def main():
-    st.title("Xây dựng chatbot tích hợp chức năng tìm kiếm với API-based LLM")
+    st.title("Xây dựng chatbot tích hợp chức năng tìm kiếm với Ollama và Tavily")
     if "chat_history" not in st.session_state:
         st.session_state["chat_history"] = []
     if "is_generating" not in st.session_state:
@@ -27,8 +27,10 @@ def main():
     )
     render_chat_history(st.session_state["chat_history"])
     user_input = st.chat_input(
-        "Nhập tin nhắn của bạn...",
-        disabled=st.session_state["is_generating"]
+        placeholder="Nhập tin nhắn của bạn...",
+        disabled=st.session_state["is_generating"],
+        accept_audio=True,
+        accept_file=True,
     )
 
     if user_input and not st.session_state["is_generating"]:
@@ -42,7 +44,11 @@ def main():
         user_input = st.session_state.pop("pending_input")
         with st.chat_message("user"):
             st.markdown(user_input)
-        with st.chat_message("assistant"):
+        with st.chat_message(
+            name="ai",
+            avatar=None,
+            width="stretch"
+        ):
             try:
                 response = chat_service.response(
                     input=user_input,
@@ -55,8 +61,6 @@ def main():
                 assistant_msg = display_streaming_response(response)
                 if assistant_msg:
                     st.session_state["chat_history"].append(assistant_msg)
-                    # New assistant message should show its reasoning expander;
-                    # clear the collapse flag so this message's expander remains open.
                     st.session_state["collapse_processing"] = False
             except Exception as e:
                 logger.exception("Streaming error: %s", e)

@@ -14,19 +14,23 @@ def main():
     st.title("Xây dựng chatbot đơn giản")
     if "chat_history" not in st.session_state:
         st.session_state["chat_history"] = []
-    sidebar_state = sidebar()
+    sidebar()
     client = OpenAI(
         api_key=os.getenv("GROQ_API_KEY"),
         base_url="https://api.groq.com/openai/v1"
     )
-    if sidebar_state["summarization_mode"]:
+    if st.session_state.get("summarization_mode_widget", False):
         chat_service = SummarizationChatService(client=client, history=st.session_state["chat_history"])
-    elif sidebar_state["sliding_window_mode"]:
+    elif st.session_state.get("sliding_window_mode_widget", False):
         chat_service = SlidingWindowChatService(client=client, history=st.session_state["chat_history"])
     else:
         chat_service = ChatService(client=client)
     render_chat_history(st.session_state["chat_history"])
-    user_input = st.chat_input("Nhập tin nhắn của bạn...")
+    user_input = st.chat_input(
+        placeholder="Nhập tin nhắn của bạn...",
+        key="user_input",
+        disabled=False
+    )
     if user_input:
         # Display user message
         with st.chat_message("user"):
@@ -36,12 +40,12 @@ def main():
                 response = chat_service.response(
                     input=user_input,
                     model="openai/gpt-oss-20b",
-                    instructions=sidebar_state["custom_instructions"],
-                    max_output_tokens=sidebar_state["max_output_tokens"],
-                    stream=sidebar_state["streaming_mode"],
-                    temperature=sidebar_state["temperature"]
+                    instructions=st.session_state.get("custom_instructions", ""),
+                    max_output_tokens=st.session_state.get("max_output_tokens", 2048),
+                    stream=st.session_state.get("streaming_mode_widget", False),
+                    temperature=st.session_state.get("temperature", 0.25)
                 )
-                if not sidebar_state["streaming_mode"]:
+                if not st.session_state.get("streaming_mode_widget", False):
                     with st.spinner("Đang phản hồi..."):
                         display_response(response)
                 else:

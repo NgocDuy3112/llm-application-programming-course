@@ -105,53 +105,29 @@ class ChatService:
 
     # --- Refactor helpers -------------------------------------------------
     def _get_tools_param(self, tools: list | None, request_id: str) -> list | None:
-        """Return provider-appropriate tools parameter.
+        """Return the tools parameter exactly as provided.
 
-        Groq uses top-level function schema.
-        Other providers use OpenAI-style nested function schema.
+        Groq expects nested schema ("function": {...}), so we do not
+        perform any internal normalization.  The caller is responsible for
+        supplying correctly shaped objects.
         """
-        provider_name = str(self.provider.value).lower() if isinstance(self.provider, LLMProvider) else str(self.provider).lower()
-        
-        # Default (including Ollama): map tools to OpenAI-style schema
+
         tools_param = tools or []
-        valid_tools: list[dict] = []
+        # basic validation: warn on non-dicts but still pass through
         for idx, tool in enumerate(tools_param):
             if not isinstance(tool, dict):
-                logger.warning("[%s] Provider=%s: skip invalid tool at index=%d (not a dict)", request_id, self.provider.value, idx)
+                logger.warning("[%s] Provider=%s: tool at index %d is not a dict, passing through", request_id, self.provider.value, idx)
                 continue
-
-            # If already OpenAI-style (has a nested 'function' dict), keep as-is
-            if tool.get("type") == "function" and isinstance(tool.get("function"), dict):
-                valid_tools.append(tool)
-                continue
-
-            # If it's a non-function tool, pass through
-            if tool.get("type") != "function":
-                valid_tools.append(tool)
-                continue
-
-            # Otherwise, wrap top-level fields into the nested 'function' form
-            fn: dict = {}
-            if "name" in tool:
-                fn["name"] = tool.get("name")
-            if "description" in tool:
-                fn["description"] = tool.get("description")
-            if "parameters" in tool:
-                fn["parameters"] = tool.get("parameters")
-            if "strict" in tool:
-                fn["strict"] = tool.get("strict")
-
-            wrapped = {"type": tool.get("type", "function"), "function": fn}
-            valid_tools.append(wrapped)
-
-        logger.debug(
-            "[%s] Provider=%s: using OpenAI-style tools valid_count=%d input_count=%d",
-            request_id,
-            self.provider.value,
-            len(valid_tools),
-            len(tools_param),
-        )
-        return valid_tools
+            # ensure top-level name exists (Groq requires it)
+            if tool.get("type") == "function" and not tool.get("name"):
+                fn = tool.get("function")
+                if isinstance(fn, dict) and fn.get("name"):
+                    tool["name"] = fn.get("name")
+            # make sure nested parameters field is at least an empty object
+            fn = tool.get("function")
+            if isinstance(fn, dict) and fn.get("parameters") is None:
+                fn["parameters"] = {}
+        return tools_param
 
     def _parse_tool_args(self, raw_arguments: Any) -> dict:
         """Parse function/tool call arguments into a dict, best-effort."""
@@ -184,7 +160,7 @@ class ChatService:
             return None
 
     def _append_tool_output_to_request(self, request_input: list, call: Any, tool_text: str) -> list:
-        """Append tool output to request_input using provider-specific shape."""
+        """Append tool output to request_input using Groq tool message shape."""
         call_id_val = self._call_id_from_call(call)
         request_input.append({
             "type": "function_call_output",
@@ -443,12 +419,14 @@ class ChatService:
 
             # run a single response cycle
             try:
+                tools_param = self._get_tools_param(tools, request_id)
+
                 call_kwargs = {
                     "model": model,
                     "instructions": eff_instructions,
                     "input": request_input,
                     "stream": True,
-                    "tools": tools
+                    "tools": tools_param,
                 }
                 # preserve extra kwargs (e.g., temperature) but don't overwrite our explicit keys
                 call_kwargs.update({k: v for k, v in kwargs.items() if k not in call_kwargs})

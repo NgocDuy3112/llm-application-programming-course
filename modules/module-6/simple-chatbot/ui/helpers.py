@@ -154,6 +154,8 @@ def display_streaming_response(response_generator) -> dict | None:
         etype = getattr(event, "type", None)
 
         match etype:
+            case OpenAIResponseAPIStreamingState.RESPONSE_CREATED:
+                logger.debug("Stream created, waiting for content...")
             case OpenAIResponseAPIStreamingState.RESPONSE_REASONING_SUMMARY_TEXT_DELTA:
                 delta = getattr(event, "delta", "")
                 if delta:

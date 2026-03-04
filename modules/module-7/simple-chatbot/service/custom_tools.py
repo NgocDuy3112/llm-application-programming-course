@@ -8,16 +8,17 @@ settings = Settings()
 tavily_client = TavilyClient(settings.TAVILY_API_KEY)
 
 
-Tool = dict[str, Any]
-
-
-
 def tavily_search(query: str) -> str:
     return tavily_client.search(
         query=query, 
         include_answer=True,
         time_range="year"
     ).get("answer", "No answer from Tavily")
+
+
+def get_current_date() -> str:
+    return date.today().isoformat()
+
 
 
 DEFAULT_TOOLS = [

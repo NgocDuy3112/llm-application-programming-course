@@ -14,45 +14,47 @@ def sidebar():
         st.title("Cài đặt Chatbot")
         provider_names = LLMProvider.values()
         model_provider_name = st.selectbox(
-            "Chọn nhà cung cấp mô hình",
+            label="Chọn nhà cung cấp mô hình",
             options=provider_names,
             index=0,
         )
         model_provider = LLMProvider(model_provider_name)
         model = st.selectbox(
-            "Chọn mô hình",
+            label="Chọn mô hình",
             options=model_provider.default_models,
             index=0,
         )
         temperature = st.slider(
-            "Temperature",
+            label="Temperature",
             min_value=0.0,
             max_value=1.0,
             value=0.25,
             step=0.05,
         )
         max_output_tokens = st.slider(
-            "Số tokens tối đa",
+            label="Số tokens tối đa",
             min_value=1,
             max_value=65000,
             value=65000,
             step=1
         )
         custom_instructions = st.text_area(
-            "Chỉ dẫn tùy chỉnh (tùy chọn)",
+            label="Chỉ dẫn tùy chỉnh (tùy chọn)",
             value="",
             height=200,
+            disabled=False
         )
         structured_output_mode = st.toggle(
-            "Chế độ định dạng theo cấu trúc",
+            label="Chế độ định dạng theo cấu trúc",
             value=st.session_state.get("structured_mode_widget", False),
             key="structured_mode_widget",
             on_change=disable_streaming_when_structured,
         )
         enable_web_search = st.toggle(
-            "Bật tìm kiếm web (web search)",
+            label="Bật tìm kiếm web (web search)",
             value=st.session_state.get("enable_web_search", True),
             key="enable_web_search",
+            disabled=False
         )
         output_schema = ""
         if structured_output_mode:
@@ -61,7 +63,7 @@ def sidebar():
                 output_schema = json.dumps(schema_from_file)
             else:
                 output_schema_text = st.text_area(
-                    "Lược đồ Đầu ra (định dạng JSON)",
+                    label="Lược đồ Đầu ra (định dạng JSON)",
                     value='{"field_name": { "type": "str", "default": null, "description": "Description of the field" }}',
                     height=300,
                 )

@@ -10,7 +10,7 @@ def display_response(response) -> None:
         match block.type:
             case 'reasoning':
                 if (summary := block.summary or content):
-                    with st.expander("PROCESSING"):
+                    with st.expander(label="PROCESSING", expanded=True):
                         st.markdown(summary)
             case 'message':
                 if content.startswith("{") and content.endswith("}"):
@@ -39,6 +39,8 @@ def display_streaming_response(response_generator) -> dict | None:
         # event.type can be one of our enum values
         etype = getattr(event, "type", None)
         match etype:
+            case OpenAIResponseAPIStreamingState.RESPONSE_CREATED:
+                print("[DEBUG] Stream created")
             case OpenAIResponseAPIStreamingState.RESPONSE_REASONING_TEXT_DELTA:
                 delta = getattr(event, "delta", "")
                 if delta:
