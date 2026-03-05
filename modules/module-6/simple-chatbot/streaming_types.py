@@ -12,3 +12,4 @@ class OpenAIResponseAPIStreamingState(str, Enum):
     RESPONSE_REASONING_TEXT_DONE = "response.reasoning_text.done"
     RESPONSE_REASONING_SUMMARY_TEXT_DONE = "response.reasoning_summary_text.done"
     RESPONSE_COMPLETED = "response.completed"
+    RESPONSE_INCOMPLETED = "response.incomplete"

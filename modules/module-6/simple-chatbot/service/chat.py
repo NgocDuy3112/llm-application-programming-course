@@ -23,6 +23,9 @@ class ChatService:
     Bạn là một trợ lý ảo thông minh và hữu ích, luôn cố gắng cung cấp câu trả lời chính xác và đầy đủ nhất cho người dùng.
     Bạn được cung cấp một số thông tin về bối cảnh và lịch sử hội thoại trước đó, hãy sử dụng chúng để hiểu rõ hơn về yêu cầu của người dùng và trả lời một cách phù hợp.
     Ngoài ra, bạn có thể sử dụng công cụ tìm kiếm tavily_search để tra cứu thông tin nếu cần thiết. Luôn thay đổi truy vấn tìm kiếm để có được kết quả tốt nhất, và chỉ sử dụng công cụ tavily_search khi bạn thực sự cần thông tin cập nhật hoặc chi tiết mà bạn không chắc chắn. Đảm bảo rằng câu trả lời của bạn dựa trên thông tin đã biết và tavily_search một cách cân bằng.
+    Mỗi yêu cầu chỉ được gọi cùng một công cụ tối đa 1 lần với cùng tham số. 
+    Nếu có kết quả công cụ sẵn có, tổng hợp và trả lời — KHÔNG gọi lại công cụ. 
+    Nếu cần dữ liệu bổ sung, hỏi người dùng thay vì gọi công cụ lặp lại.
     """
 
     def __init__(
@@ -100,81 +103,7 @@ class ChatService:
             logger.exception("[%s] Failed to compress history using provider %s and model %s; history unchanged", request_id or "no-rid", self.provider.value, model)
             return
 
-    def _search(self, query: str) -> dict:
-        return self.client.search(query=query)
 
-    # --- Refactor helpers -------------------------------------------------
-    def _get_tools_param(self, tools: list | None, request_id: str) -> list | None:
-        """Return the tools parameter exactly as provided.
-
-        Groq expects nested schema ("function": {...}), so we do not
-        perform any internal normalization.  The caller is responsible for
-        supplying correctly shaped objects.
-        """
-
-        tools_param = tools or []
-        # basic validation: warn on non-dicts but still pass through
-        for idx, tool in enumerate(tools_param):
-            if not isinstance(tool, dict):
-                logger.warning("[%s] Provider=%s: tool at index %d is not a dict, passing through", request_id, self.provider.value, idx)
-                continue
-            # ensure top-level name exists (Groq requires it)
-            if tool.get("type") == "function" and not tool.get("name"):
-                fn = tool.get("function")
-                if isinstance(fn, dict) and fn.get("name"):
-                    tool["name"] = fn.get("name")
-            # make sure nested parameters field is at least an empty object
-            fn = tool.get("function")
-            if isinstance(fn, dict) and fn.get("parameters") is None:
-                fn["parameters"] = {}
-        return tools_param
-
-    def _parse_tool_args(self, raw_arguments: Any) -> dict:
-        """Parse function/tool call arguments into a dict, best-effort."""
-        try:
-            args = json.loads(raw_arguments) if isinstance(raw_arguments, str) else raw_arguments
-            if args is None:
-                return {}
-            return args
-        except Exception:
-            return {"_raw": raw_arguments}
-
-    def _infer_tool_name(self, tool_name: Any, raw_arguments: Any) -> str | None:
-        """Infer missing tool name from payload shape/arguments."""
-        if isinstance(tool_name, str) and tool_name.strip():
-            return tool_name.strip()
-
-        parsed_args = self._parse_tool_args(raw_arguments)
-        if isinstance(parsed_args, dict) and "query" in parsed_args:
-            # Current app exposes tavily_search as the web-search tool.
-            return "tavily_search"
-        return None
-
-    def _call_id_from_call(self, call: Any) -> Any:
-        """Extract a stable call id from either dict-shaped or object-shaped call items."""
-        try:
-            if isinstance(call, dict):
-                return call.get("call_id") or call.get("id")
-            return getattr(call, "call_id", None) or getattr(call, "id", None)
-        except Exception:
-            return None
-
-    def _append_tool_output_to_request(self, request_input: list, call: Any, tool_text: str) -> list:
-        """Append tool output to request_input using Groq tool message shape."""
-        call_id_val = self._call_id_from_call(call)
-        request_input.append({
-            "role": "assistant",
-            "tool_call_id": call_id_val,
-            "name": call.get("name") if isinstance(call, dict) else None,
-            "content": tool_text,
-        })
-        return request_input
-
-    def _safe_get(self, obj: Any, key: str, default: Any = None) -> Any:
-        """Read value from dict-like or object-like payloads."""
-        if isinstance(obj, dict):
-            return obj.get(key, default)
-        return getattr(obj, key, default)
 
     def _handle_stream_event(self, event: Any, assistant_output_text: str, reasoning_output_text: str, detected_function_calls: list, request_id: str) -> tuple[str, str, list, bool]:
         """Process a single streaming event and update captured outputs.
@@ -182,50 +111,75 @@ class ChatService:
         Returns updated (assistant_output_text, reasoning_output_text, detected_function_calls, stop_stream_flag).
         """
         stop_stream = False
-        event_type = self._safe_get(event, "type", None)
+        # Inline _safe_get: read value from dict-like or object-like payloads
+        event_type = event.get("type") if isinstance(event, dict) else getattr(event, "type", None)
         logger.debug("[%s] Stream event: %s", request_id, event_type)
 
         match event_type:
             case OpenAIResponseAPIStreamingState.RESPONSE_OUTPUT_TEXT_DELTA:
-                delta = self._safe_get(event, "delta", "")
+                delta = event.get("delta") if isinstance(event, dict) else getattr(event, "delta", "")
                 if delta:
                     assistant_output_text += delta
 
             case OpenAIResponseAPIStreamingState.RESPONSE_OUTPUT_TEXT_DONE:
-                done_text = self._safe_get(event, "text", "")
+                done_text = event.get("text") if isinstance(event, dict) else getattr(event, "text", "")
                 if done_text:
                     assistant_output_text = done_text
 
             case OpenAIResponseAPIStreamingState.RESPONSE_REASONING_TEXT_DELTA | OpenAIResponseAPIStreamingState.RESPONSE_REASONING_SUMMARY_TEXT_DELTA:
-                delta = self._safe_get(event, "delta", "")
+                delta = event.get("delta") if isinstance(event, dict) else getattr(event, "delta", "")
                 if delta:
                     reasoning_output_text += delta
 
             case OpenAIResponseAPIStreamingState.RESPONSE_REASONING_TEXT_DONE | OpenAIResponseAPIStreamingState.RESPONSE_REASONING_SUMMARY_TEXT_DONE:
-                done_text = self._safe_get(event, "text", "")
+                done_text = event.get("text") if isinstance(event, dict) else getattr(event, "text", "")
                 if done_text:
                     reasoning_output_text = done_text
 
             case OpenAIResponseAPIStreamingState.RESPONSE_OUTPUT_ITEM_DONE:
-                item = self._safe_get(event, "item", None) or self._safe_get(event, "output_item", None)
+                item = event.get("item") if isinstance(event, dict) else getattr(event, "item", None)
+                if not item:
+                    item = event.get("output_item") if isinstance(event, dict) else getattr(event, "output_item", None)
                 if not item:
                     logger.debug("[%s] OUTPUT_ITEM_DONE but no item/output_item. event=%r", request_id, event)
                     return assistant_output_text, reasoning_output_text, detected_function_calls, stop_stream
 
-                item_type = self._safe_get(item, "type", None)
-                function_payload = self._safe_get(item, "function", None)
-                call_name = self._safe_get(item, "name", None) or self._safe_get(item, "tool_name", None) or self._safe_get(item, "function_name", None)
-                call_arguments = self._safe_get(item, "arguments", None)
+                item_type = item.get("type") if isinstance(item, dict) else getattr(item, "type", None)
+                function_payload = item.get("function") if isinstance(item, dict) else getattr(item, "function", None)
+                call_name = item.get("name") if isinstance(item, dict) else getattr(item, "name", None)
+                if not call_name:
+                    call_name = item.get("tool_name") if isinstance(item, dict) else getattr(item, "tool_name", None)
+                if not call_name:
+                    call_name = item.get("function_name") if isinstance(item, dict) else getattr(item, "function_name", None)
+                call_arguments = item.get("arguments") if isinstance(item, dict) else getattr(item, "arguments", None)
 
                 if function_payload is not None:
-                    call_name = call_name or self._safe_get(function_payload, "name", None)
-                    call_arguments = call_arguments or self._safe_get(function_payload, "arguments", None)
+                    if not call_name:
+                        call_name = function_payload.get("name") if isinstance(function_payload, dict) else getattr(function_payload, "name", None)
+                    if not call_arguments:
+                        call_arguments = function_payload.get("arguments") if isinstance(function_payload, dict) else getattr(function_payload, "arguments", None)
 
-                call_arguments = call_arguments or self._safe_get(item, "input", None) or self._safe_get(item, "tool_input", None)
-                inferred_name = self._infer_tool_name(call_name, call_arguments)
+                if not call_arguments:
+                    call_arguments = item.get("input") if isinstance(item, dict) else getattr(item, "input", None)
+                if not call_arguments:
+                    call_arguments = item.get("tool_input") if isinstance(item, dict) else getattr(item, "tool_input", None)
+
+                # Inline _infer_tool_name
+                inferred_name = None
+                if isinstance(call_name, str) and call_name.strip():
+                    inferred_name = call_name.strip()
+                else:
+                    try:
+                        parsed_args = json.loads(call_arguments) if isinstance(call_arguments, str) else call_arguments
+                        if isinstance(parsed_args, dict) and "query" in parsed_args:
+                            inferred_name = "tavily_search"
+                    except Exception:
+                        pass
 
                 if item_type in ("function_call", "tool_call") or inferred_name:
-                    call_id = self._safe_get(item, "call_id", None) or self._safe_get(item, "id", None)
+                    call_id = item.get("call_id") if isinstance(item, dict) else getattr(item, "call_id", None)
+                    if not call_id:
+                        call_id = item.get("id") if isinstance(item, dict) else getattr(item, "id", None)
                     detected_function_calls.append({
                         "call_id": call_id,
                         "name": inferred_name,
@@ -252,27 +206,66 @@ class ChatService:
             request_input.append(assistant_msg)
             logger.debug("[%s] Appended assistant message to request_input (messages=%d)", request_id, len(request_input))
 
-    def _process_detected_function_calls(self, detected_function_calls: list, request_input: list, executed_tool_outputs: dict, request_id: str, tool_calls_start: int) -> tuple[dict, int]:
-        """Execute detected function/tool calls, update executed_tool_outputs and return updated dict and tool_calls count.
+    def _process_detected_function_calls(self, detected_function_calls: list, request_input: list, executed_tool_outputs: dict, request_id: str, tool_calls_start: int, all_signatures: set[str] | None = None) -> tuple[dict, int, bool]:
+        """Execute detected function/tool calls, update executed_tool_outputs and return updated dict, tool_calls count, and whether new executions occurred.
 
-        Returns (executed_tool_outputs, tool_calls)
+        Returns (executed_tool_outputs, tool_calls, new_executions_made)
         """
         tool_calls = tool_calls_start
+        new_executions_made = False
+        all_signatures = all_signatures or set()
+
         for call in detected_function_calls:
             tool_calls += 1
             raw_arguments = call.get("arguments")
-            tool_name = self._infer_tool_name(call.get("name"), raw_arguments)
+
+            # Inline _infer_tool_name
+            tool_name = None
+            call_name = call.get("name")
+            if isinstance(call_name, str) and call_name.strip():
+                tool_name = call_name.strip()
+            else:
+                try:
+                    parsed_args = json.loads(raw_arguments) if isinstance(raw_arguments, str) else raw_arguments
+                    if isinstance(parsed_args, dict) and "query" in parsed_args:
+                        tool_name = "tavily_search"
+                except Exception:
+                    pass
+
             if not tool_name:
                 logger.warning("[%s] Skip tool call without resolvable name (call=%s)", request_id, call)
                 continue
 
-            tool_args = self._parse_tool_args(raw_arguments)
+            # Inline _parse_tool_args
+            try:
+                tool_args = json.loads(raw_arguments) if isinstance(raw_arguments, str) else raw_arguments
+                if tool_args is None:
+                    tool_args = {}
+            except Exception:
+                tool_args = {"_raw": raw_arguments}
 
             try:
                 sig_args = json.dumps(tool_args, ensure_ascii=False, sort_keys=True)
             except Exception:
                 sig_args = repr(tool_args)
             signature = f"{tool_name}:{sig_args}"
+
+            # Skip if already executed in this response
+            if signature in all_signatures:
+                logger.info("[%s] Skipping duplicate tool call: %s", request_id, signature)
+                # Still append placeholder to maintain conversation flow
+                call_id_val = call.get("call_id") or call.get("id")
+                request_input.append({
+                    "role": "assistant",
+                    "tool_call_id": call_id_val,
+                    "name": call.get("name") if isinstance(call, dict) else None,
+                    "content": "(duplicate tool call skipped)",
+                })
+                continue
+
+            # New execution
+            all_signatures.add(signature)
+            new_executions_made = True
 
             if signature in executed_tool_outputs:
                 tool_text = executed_tool_outputs[signature]
@@ -295,11 +288,17 @@ class ChatService:
                 executed_tool_outputs[signature] = tool_text
                 logger.debug("[%s] Tool output for %s len=%d", request_id, tool_name, len(tool_text))
 
-            # Append tool output to the request in a provider-specific format
-            request_input = self._append_tool_output_to_request(request_input, call, tool_text)
+            # Inline _append_tool_output_to_request: append tool output to request_input
+            call_id_val = call.get("call_id") or call.get("id")
+            request_input.append({
+                "role": "assistant",
+                "tool_call_id": call_id_val,
+                "name": call.get("name") if isinstance(call, dict) else None,
+                "content": tool_text,
+            })
             logger.debug("[%s] Appended tool output as assistant message to request_input (messages=%d)", request_id, len(request_input))
 
-        return executed_tool_outputs, tool_calls
+        return executed_tool_outputs, tool_calls, new_executions_made
 
     def _build_fallback_event_and_message(self, executed_tool_outputs: dict[str, str]) -> tuple[dict, Any]:
         """Create a fallback assistant message and a synthetic streaming event.
@@ -390,6 +389,8 @@ class ChatService:
         # Deduplicate tool executions within a single response loop to avoid
         # runaway repeated calls when the model re-requests the same tool.
         executed_tool_outputs: dict[str, str] = {}
+        # Track all tool call signatures made in this response to prevent duplicates
+        all_tool_signatures: set[str] = set()
         cycle_count = 0
         # Allow callers to override max cycles via kwargs; default to 5
         max_cycles = kwargs.pop("max_cycles", 5)
@@ -420,7 +421,21 @@ class ChatService:
 
             # run a single response cycle
             try:
-                tools_param = self._get_tools_param(tools, request_id)
+                # Inline _get_tools_param: validate and normalize tools parameter
+                tools_param = tools or []
+                for idx, tool in enumerate(tools_param):
+                    if not isinstance(tool, dict):
+                        logger.warning("[%s] Provider=%s: tool at index %d is not a dict, passing through", request_id, self.provider.value, idx)
+                        continue
+                    # ensure top-level name exists (Groq requires it)
+                    if tool.get("type") == "function" and not tool.get("name"):
+                        fn = tool.get("function")
+                        if isinstance(fn, dict) and fn.get("name"):
+                            tool["name"] = fn.get("name")
+                    # make sure nested parameters field is at least an empty object
+                    fn = tool.get("function")
+                    if isinstance(fn, dict) and fn.get("parameters") is None:
+                        fn["parameters"] = {}
 
                 call_kwargs = {
                     "model": model,
@@ -455,9 +470,32 @@ class ChatService:
                 # include what the assistant said so far before invoking tools
                 self._append_assistant_partial(request_input, assistant_output_text, reasoning_output_text, request_id)
 
-                executed_tool_outputs, tool_calls = self._process_detected_function_calls(
-                    detected_calls, request_input, executed_tool_outputs, request_id, tool_calls
+                executed_tool_outputs, tool_calls, new_executions = self._process_detected_function_calls(
+                    detected_calls, request_input, executed_tool_outputs, request_id, tool_calls, all_tool_signatures
                 )
+
+                # If no new tool executions this cycle, synthesize final answer
+                if not new_executions:
+                    logger.info("[%s] No new tool executions; requesting final synthesis.", request_id)
+                    try:
+                        final_stream = self._stream_final_answer_without_tools(
+                            model=model,
+                            eff_instructions=eff_instructions,
+                            request_input=request_input,
+                            request_id=request_id,
+                            **kwargs,
+                        )
+                        for event in final_stream:
+                            yield event
+                    except Exception:
+                        logger.exception("[%s] Final synthesis pass failed", request_id)
+                        assistant_msg, synthetic_event = self._build_fallback_event_and_message(executed_tool_outputs)
+                        try:
+                            self.conversation_history.append(assistant_msg)
+                        except Exception:
+                            logger.debug("[%s] Failed to append fallback assistant message", request_id)
+                        yield synthetic_event
+                    break
             except Exception as e:
                 logger.exception(
                     "[%s] Error during response generation with provider %s and model %s: %s",
