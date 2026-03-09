@@ -1,12 +1,7 @@
 import streamlit as st
-from settings import Settings
 
 from service.chat import *
 from ui.helpers import *
-
-
-
-settings = Settings()
 
 
 

@@ -12,17 +12,22 @@ class ChatService:
             "role": "assistant",
         }
         try:
-            for block in response.output:
-                content = block.content[0].text
-                match block.type:
-                    case 'reasoning':
-                        if (summary := block.summary or content):
-                            message_dict["reasoning_content"] = summary
-                    case 'message':
-                        if block.content and content:
-                            message_dict["content"] = content
-                    case _:
-                        raise ValueError(f"Unsupported block type: {block.type}")
+            for block in getattr(response, "output", []) or []:
+                # defensive: block.content may be None or empty
+                content_items = getattr(block, "content", []) or []
+                content = getattr(content_items[0], "text", "") if content_items else ""
+                block_type = getattr(block, "type", None)
+
+                if block_type == 'reasoning':
+                    summary = getattr(block, "summary", None) or content
+                    if summary:
+                        message_dict["reasoning_content"] = summary
+                elif block_type == 'message':
+                    if content:
+                        message_dict["content"] = content
+                else:
+                    # ignore unknown block types instead of raising
+                    continue
         except Exception as e:
             print(e)
         finally:

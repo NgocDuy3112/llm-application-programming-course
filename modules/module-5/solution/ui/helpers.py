@@ -9,16 +9,22 @@ def display_response(response) -> dict | None:
     reasoning_content = ""
     content = ""
 
-    for block in getattr(response, "output", []):
-        block_content = block.content[0].text
-        match block.type:
-            case "reasoning":
-                if (summary := block.summary or block_content):
-                    reasoning_content = summary
-            case "message":
+    for block in getattr(response, "output", []) or []:
+        # defensive access: block.content may be None or empty
+        content_items = getattr(block, "content", []) or []
+        block_content = getattr(content_items[0], "text", "") if content_items else ""
+        block_type = getattr(block, "type", None)
+
+        if block_type == "reasoning":
+            summary = getattr(block, "summary", None) or block_content
+            if summary:
+                reasoning_content = summary
+        elif block_type == "message":
+            if block_content:
                 content = block_content
-            case _:
-                pass
+        else:
+            # unknown block types are ignored
+            continue
 
     message = {"role": "assistant"}
     if reasoning_content:
@@ -50,7 +56,7 @@ def display_streaming_response(response_generator, stream_slot=None) -> dict | N
             for event in response_generator:
                 etype = getattr(event, "type", None)
                 match etype:
-                    case OpenAIResponseAPIStreamingState.RESPONSE_REASONING_TEXT_DELTA:
+                    case OpenAIResponseAPIStreamingState.RESPONSE_REASONING_SUMMARY_TEXT_DELTA:
                         delta = getattr(event, "delta", "")
                         if delta:
                             reasoning_content_response += delta

@@ -3,13 +3,12 @@ import os
 from openai import OpenAI
 from dotenv import load_dotenv
 
-from settings import settings
 from ui.sidebar import sidebar
 from ui.helpers import *
 from service.chat import *
 
 # Gợi ý: load_dotenv() từ .env file
-load_dotenv(dotenv_path="../.env", override=True)
+load_dotenv(dotenv_path=".env", override=True)
 
 
 def main():
@@ -26,8 +25,8 @@ def main():
 
     # Gợi ý: Khởi tạo client OpenAI với GROQ_API_KEY
     client = OpenAI(
-        api_key=os.getenv("GROQ_API_KEY"),
-        base_url="https://api.groq.com/openai/v1"
+        api_key=os.getenv("OLLAMA_API_KEY"),
+        base_url="https://ollama.com/v1"
     )
 
     # TODO: Khởi tạo ChatService phù hợp (ChatService, SlidingWindow, hoặc Summarization)

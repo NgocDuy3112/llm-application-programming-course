@@ -1,5 +1,4 @@
 import os
-from rich import print
 from dotenv import load_dotenv
 
 from ui.sidebar import *
@@ -19,7 +18,7 @@ def main():
 
     sidebar()
     client = OpenAI(
-        api_key=settings.OLLAMA_API_KEY,
+        api_key=os.getenv("OLLAMA_API_KEY"),
         base_url="https://ollama.com/v1"
     )
     
@@ -56,7 +55,7 @@ def main():
             st.session_state["chat_history"].append(user_msg)
             redraw_chat_history()
             service_response = chat_service.response(
-                model="openai/gpt-oss-20b",
+                model="gpt-oss:20b-cloud",
                 instructions=st.session_state.get("custom_instructions", ""),
                 input=st.session_state["chat_history"],
                 max_output_tokens=st.session_state.get("max_output_tokens", 2048),
