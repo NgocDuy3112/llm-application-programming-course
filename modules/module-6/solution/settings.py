@@ -80,9 +80,8 @@ def _load_env_file_values(env_path: Path) -> dict[str, str]:
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=str(ENV_FILE_PATH), strict=False)
     GROQ_API_KEY: str | None = None
-    OPENAI_API_KEY: str | None = None
-    GEMINI_API_KEY: str | None = None
     TAVILY_API_KEY: str | None = None
+    OLLAMA_API_KEY: str | None = None
 
     def get_api_key(self, env_var_name: str | None) -> str | None:
         """Resolve API key value from env/.env by env var name."""

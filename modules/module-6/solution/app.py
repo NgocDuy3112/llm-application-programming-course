@@ -47,24 +47,24 @@ def main():
         user_input = st.session_state.pop("pending_input")
         with st.chat_message("user"):
             st.markdown(user_input)
-        with st.chat_message("assistant"):
-            try:
-                response = chat_service.response(
-                    input=user_input,
-                    model=sidebar_state["model"],
-                    instructions=sidebar_state["custom_instructions"],
-                    max_output_tokens=sidebar_state["max_output_tokens"],
-                    temperature=sidebar_state["temperature"],
-                    tools=DEFAULT_TOOLS if sidebar_state.get("enable_web_search", True) else [],
-                )
-                assistant_msg = display_streaming_response(response)
-                if assistant_msg:
-                    st.session_state["chat_history"].append(assistant_msg)
-                    # New assistant message should show its reasoning expander;
-                    # clear the collapse flag so this message's expander remains open.
-                    st.session_state["collapse_processing"] = False
-            except Exception as e:
-                logger.exception("Streaming error: %s", e)
+        try:
+            response = chat_service.response(
+                input=user_input,
+                model=sidebar_state["model"],
+                instructions=sidebar_state["custom_instructions"],
+                max_output_tokens=sidebar_state["max_output_tokens"],
+                temperature=sidebar_state["temperature"],
+                tools=DEFAULT_TOOLS if sidebar_state.get("enable_web_search", True) else [],
+            )
+            assistant_msg = display_streaming_response(response)
+            if assistant_msg:
+                st.session_state["chat_history"].append(assistant_msg)
+                # New assistant message should show its reasoning expander;
+                # clear the collapse flag so this message's expander remains open.
+                st.session_state["collapse_processing"] = False
+        except Exception as e:
+            logger.exception("Streaming error: %s", e)
+            with st.chat_message("assistant"):
                 st.error(f"❌ [ERROR] {str(e)}")
         st.session_state["is_generating"] = False
         st.rerun()

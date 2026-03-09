@@ -1,4 +1,5 @@
 import json
+import uuid
 import streamlit as st
 
 from streaming_types import OpenAIResponseAPIStreamingState
@@ -20,8 +21,6 @@ def _normalize_tool_args(raw_arguments: object) -> dict:
         return {"_value": parsed_args}
     except Exception:
         return {"_raw": raw_arguments}
-
-
 
 
 
@@ -99,47 +98,97 @@ def display_streaming_response(response_generator) -> dict | None:
     content_response = ""
     tool_calls = []
 
+    # processing_items is the timeline of items shown inside the
+    # PROCESSING expander. Each item is a dict { type: 'reasoning'|'tool',
+    # content: str, meta: dict }
+    processing_items: list[dict] = []
+    _processing_expander_created = False
+    _processing_area_placeholder = None
+
     with assistant_placeholder.container():
         with st.chat_message("assistant"):
-            reasoning_placeholder = st.empty()
             content_placeholder = st.empty()
-            reasoning_expander = None
+
+            def ensure_processing_area():
+                nonlocal _processing_expander_created, _processing_area_placeholder
+                if not _processing_expander_created:
+                    with st.expander("PROCESSING"):
+                        _processing_area_placeholder = st.empty()
+                    _processing_expander_created = True
+
+            def render_processing():
+                """Render the ordered processing_items into the expander placeholder."""
+                if not _processing_expander_created or _processing_area_placeholder is None:
+                    return
+                rendered = []
+                for item in processing_items:
+                    if item.get("type") == "reasoning":
+                        # reasoning content may be multi-line markdown
+                        rendered.append(item.get("content", ""))
+                    elif item.get("type") == "tool":
+                        meta = item.get("meta", {})
+                        # Only support function_call_output schema; show tool name and args
+                        tool_name = meta.get("name")
+                        args = meta.get("arguments", {}) or {}
+                        args_text = json.dumps(args, ensure_ascii=False) if args else "{}"
+                        if tool_name:
+                            header = f"**`{tool_name}({args_text})`**"
+                        else:
+                            header = f"**`function_call_output({args_text})`**"
+                        rendered.append(header)
+                        output = meta.get("output", "")
+                        if output:
+                            rendered.append(f"```\n{output}\n```")
+
+                _processing_area_placeholder.markdown("\n\n".join(rendered), unsafe_allow_html=True)
+
+            def _ensure_current_reasoning_item() -> dict:
+                # Return the last reasoning item or create a new one.
+                if processing_items and processing_items[-1].get("type") == "reasoning":
+                    return processing_items[-1]
+                item = {"type": "reasoning", "content": "", "meta": {}}
+                processing_items.append(item)
+                return item
 
             for event in response_generator:
                 etype = getattr(event, "type", None)
-                
+
                 match etype:
                     case OpenAIResponseAPIStreamingState.RESPONSE_REASONING_TEXT_DELTA:
                         delta = getattr(event, "delta", "")
                         if delta:
+                            cur = _ensure_current_reasoning_item()
+                            cur["content"] += delta
                             reasoning_content_response += delta
-                            if reasoning_expander is None:
-                                reasoning_expander = reasoning_placeholder.expander("PROCESSING")
-                            reasoning_expander.markdown(reasoning_content_response)
+                            ensure_processing_area()
+                            render_processing()
 
                     case OpenAIResponseAPIStreamingState.RESPONSE_REASONING_SUMMARY_TEXT_DELTA:
                         delta = getattr(event, "delta", "")
                         if delta:
+                            cur = _ensure_current_reasoning_item()
+                            cur["content"] += delta
                             reasoning_content_response += delta
-                            if reasoning_expander is None:
-                                reasoning_expander = reasoning_placeholder.expander("PROCESSING")
-                            reasoning_expander.markdown(reasoning_content_response)
+                            ensure_processing_area()
+                            render_processing()
 
                     case OpenAIResponseAPIStreamingState.RESPONSE_REASONING_TEXT_DONE:
                         done_text = getattr(event, "text", "")
                         if done_text:
+                            cur = _ensure_current_reasoning_item()
+                            cur["content"] = done_text
                             reasoning_content_response = done_text
-                            if reasoning_expander is None:
-                                reasoning_expander = reasoning_placeholder.expander("PROCESSING")
-                            reasoning_expander.markdown(reasoning_content_response)
+                            ensure_processing_area()
+                            render_processing()
 
                     case OpenAIResponseAPIStreamingState.RESPONSE_REASONING_SUMMARY_TEXT_DONE:
                         done_text = getattr(event, "text", "")
                         if done_text:
+                            cur = _ensure_current_reasoning_item()
+                            cur["content"] = done_text
                             reasoning_content_response = done_text
-                            if reasoning_expander is None:
-                                reasoning_expander = reasoning_placeholder.expander("PROCESSING")
-                            reasoning_expander.markdown(reasoning_content_response)
+                            ensure_processing_area()
+                            render_processing()
 
                     case OpenAIResponseAPIStreamingState.RESPONSE_OUTPUT_ITEM_DONE:
                         item = getattr(event, "item", None) or getattr(event, "output_item", None)
@@ -147,21 +196,71 @@ def display_streaming_response(response_generator) -> dict | None:
                             continue
 
                         item_type = getattr(item, "type", None)
+                        # Detection event: the model asked to call a tool/function
                         if item_type in ("function_call", "tool_call"):
-                            parsed_args = _normalize_tool_args(getattr(item, "arguments", None))
-                            tool_name = getattr(item, "name", "")
+                            call_id = getattr(item, "call_id", None) or getattr(item, "id", None)
+                            if not call_id:
+                                call_id = str(uuid.uuid4())
+
+                            # Parse arguments for display
+                            raw_args = (
+                                getattr(item, "arguments", None)
+                                or getattr(item, "input", None)
+                                or getattr(item, "tool_input", None)
+                            )
+                            parsed_args = _normalize_tool_args(raw_args)
+
+                            # Extract tool name if present
+                            tool_name = getattr(item, "name", None) or getattr(item, "function_name", None) or getattr(item, "tool_name", None)
+
+                            # Append a function_call_output placeholder (output will be
+                            # filled by the service later; UI shows a header + optional output).
                             tool_calls.append({
+                                "type": "function_call_output",
+                                "call_id": call_id,
                                 "name": tool_name,
                                 "arguments": parsed_args,
+                                "output": "",
                             })
-                            
-                            # Display tool call in reasoning expander
-                            if reasoning_expander is None:
-                                reasoning_expander = reasoning_placeholder.expander("PROCESSING")
-                            
-                            # Add tool call to reasoning content
-                            tool_args_text = json.dumps(parsed_args, ensure_ascii=False) if parsed_args else "{}"
-                            reasoning_expander.markdown(f"**`{tool_name}({tool_args_text})`**", unsafe_allow_html=True)
+
+                            # insert a tool item into the processing timeline
+                            processing_items.append({
+                                "type": "tool",
+                                "content": "",
+                                "meta": {"type": "function_call_output", "call_id": call_id, "name": tool_name, "arguments": parsed_args, "output": ""},
+                            })
+                            ensure_processing_area()
+                            render_processing()
+
+                        # Tool output event: service supplied the actual output
+                        elif item_type == "function_call_output":
+                            call_id = getattr(item, "call_id", None) or getattr(item, "id", None)
+                            output = getattr(item, "output", "")
+                            name = getattr(item, "name", None) or getattr(item, "function_name", None) or getattr(item, "tool_name", None)
+                            args = getattr(item, "arguments", None) or getattr(item, "input", None) or getattr(item, "tool_input", None)
+                            parsed_args = _normalize_tool_args(args) if args is not None else None
+                            if not call_id:
+                                continue
+
+                            # Update tool_calls list entries (set name/args if supplied)
+                            for tc in tool_calls:
+                                if tc.get("call_id") == call_id:
+                                    tc["output"] = str(output)
+                                    if name:
+                                        tc["name"] = name
+                                    if parsed_args:
+                                        tc["arguments"] = parsed_args
+
+                            # Update processing_items meta and re-render
+                            for it in processing_items:
+                                if it.get("type") == "tool" and it.get("meta", {}).get("call_id") == call_id:
+                                    it["meta"]["output"] = str(output)
+                                    if name:
+                                        it["meta"]["name"] = name
+                                    if parsed_args:
+                                        it["meta"]["arguments"] = parsed_args
+                            ensure_processing_area()
+                            render_processing()
 
                     case OpenAIResponseAPIStreamingState.RESPONSE_OUTPUT_TEXT_DELTA:
                         delta = getattr(event, "delta", "")
@@ -175,7 +274,8 @@ def display_streaming_response(response_generator) -> dict | None:
                             content_response = done_text
 
                     case OpenAIResponseAPIStreamingState.RESPONSE_COMPLETED:
-                        break
+                        # Continue instead of breaking so follow-up rounds can run
+                        continue
 
                     case _:
                         pass
@@ -230,12 +330,23 @@ def render_chat_history(chat_history: list[dict[str, str]]) -> None:
                     if reasoning:
                         st.markdown(reasoning)
                     
-                    # Display tool calls in a clean format
+                    # Display tool calls in a clean format. Support both
+                    # the older {name, arguments} schema and the newer
+                    # function_call_output schema.
                     for tool_call in tool_calls:
+                        # Render as tool_name(arguments)
                         tool_name = tool_call.get("name", "Không rõ")
-                        args = tool_call.get("arguments", {})
+                        args = tool_call.get("arguments", {}) or {}
                         args_text = json.dumps(args, ensure_ascii=False) if args else "{}"
-                        st.markdown(f"**`{tool_name}({args_text})`**", unsafe_allow_html=True)
+                        header = f"**`{tool_name}({args_text})`**" if tool_name else f"**`function_call_output({args_text})`**"
+                        st.markdown(header, unsafe_allow_html=True)
+                        output = tool_call.get("output", "")
+                        if output:
+                            try:
+                                parsed = json.loads(output)
+                                st.json(parsed)
+                            except Exception:
+                                st.code(output)
 
             # Show main content
             if not content:
