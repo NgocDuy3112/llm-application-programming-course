@@ -1,10 +1,13 @@
-from settings import Settings
+import streamlit as st
+
+from core.settings import Settings
 from tavily import TavilyClient
 
-from ui.sidebar import *
-from service.chat import *
-from service.custom_tools import DEFAULT_TOOLS
-from logger import ChatbotLogger
+from core.ui.sidebar import sidebar
+from core.orchestrator.chat_service import ChatService
+from core.orchestrator.tools import DEFAULT_TOOLS
+from core.logger import ChatbotLogger
+from core.ui.helpers import render_chat_history, display_streaming_response
 
 
 settings = Settings()

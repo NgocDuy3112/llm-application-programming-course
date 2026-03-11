@@ -103,12 +103,9 @@ class SummarizationChatService(ChatService):
         )
         self.history_summary = (resp.output_text or "").strip()
 
-    def response(self, model: str, instructions: str, input: list, **kwargs) -> tuple[list, object]:
-        """Compress history if needed and return (new_history, api_response).
-        
-        Returns:
-            (compressed_or_original_history, api_response_object)
-        """
+    def response(self, model: str, instructions: str, input: list, **kwargs):
+        """Compress history if needed and return API response object."""
+
         # Check if we need to compress
         if self._turn_count(input) >= self.summary_turn_threshold:
             k = max(1, self.keep_last)
@@ -124,11 +121,11 @@ class SummarizationChatService(ChatService):
             eff_instructions = f"{eff_instructions}\n\nBối cảnh tóm tắt: {self.history_summary}"
 
         # Get response (app will decide how to parse based on stream mode)
-        response = self.client.responses.create(
+        resp = self.client.responses.create(
             model=model,
             instructions=eff_instructions,
             input=conversation_history_to_use,
             **kwargs
         )
         
-        return (conversation_history_to_use, response)
+        return resp

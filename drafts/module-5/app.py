@@ -62,8 +62,7 @@ def main():
                 stream=stream_mode,
                 temperature=st.session_state.get("temperature", 0.25),
             )
-        
-            
+
             # For SummarizationChatService, unpack (new_history, response)
             if isinstance(chat_service, SummarizationChatService):
                 new_history, response = service_response
