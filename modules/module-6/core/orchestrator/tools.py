@@ -4,7 +4,7 @@ import os
 from dotenv import load_dotenv
 
 
-load_dotenv("../../.env", override=True)
+load_dotenv(dotenv_path=".env", override=True)
 
 
 tavily_client = TavilyClient(os.getenv("TAVILY_API_KEY"))

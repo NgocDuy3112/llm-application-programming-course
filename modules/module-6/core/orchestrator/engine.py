@@ -1,8 +1,9 @@
 import json
 
-from orchestrator.memory import WindowMemory
-from orchestrator.tools import *
-from model.adapter import BaseAdapter
+from core.orchestrator.memory import WindowMemory
+from core.orchestrator.tools import *
+from core.model.adapter import BaseAdapter
+
 
 
 class ChatbotEngine:
@@ -10,13 +11,29 @@ class ChatbotEngine:
         self.memory = WindowMemory(k=memory_size)
         self.adapter = BaseAdapter(provider=provider, api_key=api_key)
 
-    def response(self, model: str, input: str, instruction: str | None = None, **kwargs):
+    def response(
+        self, 
+        model: str, 
+        input: str, 
+        tools: list | None = DEFAULT_TOOLS,
+        instruction: str | None = None,
+        temperature: float = 0.2,
+        max_output_tokens: int = 65536,
+        **kwargs
+    ):
         system_message = {"role": "system", "content": instruction if instruction else "You are a helpful assistant."}
         self.memory.add(role="user", content=input)
         
         while True:
             messages = [system_message] + self.memory.get_messages()
-            response = self.adapter.response(model=model, messages=messages, tools=DEFAULT_TOOLS, **kwargs)
+            response = self.adapter.response(
+                model=model, 
+                messages=messages, 
+                tools=tools, 
+                temperature=temperature,
+                max_output_tokens=max_output_tokens,
+                **kwargs
+            )
             last_message = response.choices[0].message
             
             if not last_message.tool_calls:
@@ -24,7 +41,7 @@ class ChatbotEngine:
                 return last_message.content
 
             self.memory.add(role="assistant", content=last_message.content, tool_calls=last_message.tool_calls)
-            
+
             for tool_call in last_message.tool_calls:
                 tool_name = tool_call.function.name
                 try:

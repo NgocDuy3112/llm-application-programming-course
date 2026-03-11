@@ -3,7 +3,7 @@ from openai import OpenAI
 
 
 class BaseAdapter:
-    def __init__(self, provider: str,  api_key: str | None):
+    def __init__(self, provider: str, api_key: str | None):
         self.provider = provider
         self.api_key = api_key
         self.client = self.__initialize_client()
@@ -15,7 +15,22 @@ class BaseAdapter:
             case 'ollama':
                 return OpenAI(base_url="http://localhost:11434/v1", api_key="ollama")
             case _:
-                raise ValueError(f"Unsupported provider: {self.provider}")
+                raise ValueError(f"Không hỗ trợ nhà cung cấp {self.provider}")
 
-    def response(self, model: str, messages: list, **kwargs):
-        return self.client.chat.completions.create(model=model, messages=messages, **kwargs)
+    def response(
+        self, 
+        model: str, 
+        messages: list, 
+        tools: list,
+        temperature: float,
+        max_output_tokens: int,
+        **kwargs
+    ):
+        return self.client.chat.completions.create(
+            model=model, 
+            messages=messages, 
+            tools=tools,
+            temperature=temperature,
+            max_tokens=max_output_tokens,
+            **kwargs
+        )

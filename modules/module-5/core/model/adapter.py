@@ -13,5 +13,20 @@ class GroqCloudAdapter:
         else:
             raise ValueError("API key is required to initialize the OpenAI client.")
 
-    def response(self, model_name: str, messages: list, **kwargs):
-        return self.client.chat.completions.create(model=model_name, messages=messages, **kwargs)
+    def response(
+        self, 
+        model: str, 
+        messages: list, 
+        tools: list,
+        temperature: float,
+        max_output_tokens: int,
+        **kwargs
+    ):
+        return self.client.chat.completions.create(
+            model=model, 
+            messages=messages, 
+            tools=tools,
+            temperature=temperature,
+            max_tokens=max_output_tokens,
+            **kwargs
+        )
