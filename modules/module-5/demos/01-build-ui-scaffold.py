@@ -5,9 +5,9 @@ import streamlit as st
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-from core.ui.sidebar import render_sidebar
-from core.ui.chat_interface import render_chat_interface
-from core.orchestrator.engine import FakeChatbotEngine
+from ui.sidebar import render_sidebar
+from ui.chat_interface import render_chat_interface
+from orchestrator.engine import FakeChatbotEngine
 
 
 load_dotenv(dotenv_path=".env", override=True)

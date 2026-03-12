@@ -17,7 +17,6 @@ class GroqCloudAdapter:
         self, 
         model: str, 
         messages: list, 
-        tools: list,
         temperature: float,
         max_output_tokens: int,
         **kwargs
@@ -25,7 +24,6 @@ class GroqCloudAdapter:
         return self.client.chat.completions.create(
             model=model, 
             messages=messages, 
-            tools=tools,
             temperature=temperature,
             max_tokens=max_output_tokens,
             **kwargs

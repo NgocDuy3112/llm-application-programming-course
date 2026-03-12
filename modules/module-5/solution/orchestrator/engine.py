@@ -1,9 +1,14 @@
-from core.model.adapter import GroqCloudAdapter
+import os
+from dotenv import load_dotenv
+from model.adapter import GroqCloudAdapter
+
+
+load_dotenv(dotenv_path=".env", override=True)
 
 
 class ChatbotEngine:
-    def __init__(self, api_key: str | None):
-        self.adapter = GroqCloudAdapter(api_key=api_key)
+    def __init__(self):
+        self.adapter = GroqCloudAdapter(api_key=os.getenv("GROQ_API_KEY"))
 
     def response(
         self,

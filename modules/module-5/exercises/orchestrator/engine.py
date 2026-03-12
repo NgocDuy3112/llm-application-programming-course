@@ -1,4 +1,4 @@
-from core.model.adapter import GroqCloudAdapter
+from model.adapter import GroqCloudAdapter
 
 
 class ChatbotEngine:
