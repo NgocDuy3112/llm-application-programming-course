@@ -1,6 +1,6 @@
 streamlit
 openai
-tavily
+tavily-python
 
 pydantic
 pydantic-settings

@@ -1,26 +1,37 @@
 import streamlit as st
 from logger import global_logger
+from custom_types import Provider, ContextManagementMode
+
+
 
 
 def render_sidebar():
     global_logger.debug("Rendering sidebar")
+    if "selected_provider" not in st.session_state:
+        st.session_state.selected_provider = Provider.GROQ.value
+    if "selected_model" not in st.session_state:
+        st.session_state.selected_model = "openai/gpt-oss-20b"
     st.sidebar.title("Cài đặt Chatbot")
-    model_id = st.sidebar.selectbox(
+    st.sidebar.selectbox(
+        label="Chọn nhà cung cấp mô hình",
+        options=[
+            Provider.GROQ.value,
+            Provider.OLLAMA.value
+        ],
+        index=0,
+        key="selected_provider"
+    )
+    st.sidebar.selectbox(
         label="Chọn mô hình",
         options=[
-            "groq#openai/gpt-oss-20b", 
-            "groq#openai/gpt-oss-120b", 
-            "ollama#qwen3:0.6b",
-            "ollama#qwen3.5:0.8b",
+            "openai/gpt-oss-20b", 
+            "llama-3.3-70b-versatile", 
+            "qwen3:0.6b",
+            "qwen3.5:0.8b",
         ],
-        index=0
+        index=0,
+        key="selected_model"
     )
-
-    provider, model_name = model_id.split("#")
-    global_logger.info(f"Selected provider: {provider}, model: {model_name}")
-    st.session_state.selected_provider = provider
-    st.session_state.selected_model = model_name
-
     st.sidebar.slider(
         label="Độ sáng tạo (Temperature)",
         min_value=0.0,
@@ -46,18 +57,22 @@ def render_sidebar():
     st.sidebar.radio(
         label="Chọn chế độ quản lý ngữ cảnh",
         options=[
-            "Tắt",
-            "Cửa sổ trượt (sliding window)",
-            "Tóm tắt (summarization)"
+            ContextManagementMode.OFF.value,
+            ContextManagementMode.SLIDING_WINDOW.value,
+            ContextManagementMode.RELEVANCE_FILTERING.value
         ],
         index=0,
         key="context_management_mode"
     )
+    def on_enable_tools_change():
+        if st.session_state.enable_tools:
+            st.session_state.context_management_mode = ContextManagementMode.SLIDING_WINDOW.value
     st.sidebar.toggle(
         label="Cho phép sử dụng công cụ",
         value=False,
         key="enable_tools",
+        on_change=on_enable_tools_change,
     )
     if st.sidebar.button("Cập nhật cài đặt"):
-        global_logger.info(f"Settings updated - Temperature: {st.session_state.temperature}, Max tokens: {st.session_state.max_output_tokens}")
+        global_logger.info(f"Settings updated: Selected provider: {st.session_state.selected_provider}, model: {st.session_state.selected_model}, Temperature: {st.session_state.temperature}, Max tokens: {st.session_state.max_output_tokens}, Context Management Mode: {ContextManagementMode(st.session_state.context_management_mode)}, Tools enabled: {st.session_state.enable_tools}")
         st.sidebar.success("Đã cập nhật cấu hình!")

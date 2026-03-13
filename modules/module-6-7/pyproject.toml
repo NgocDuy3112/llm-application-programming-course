@@ -1,14 +1,14 @@
 [project]
-name = "module-6"
+name = "module-6-7"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "openai>=2.18.0",
+    "openai>=2.26.0",
     "pydantic>=2.12.5",
-    "pydantic-settings>=2.12.0",
+    "pydantic-settings>=2.13.1",
     "pyyaml>=6.0.3",
-    "streamlit>=1.54.0",
-    "tavily>=1.1.0",
+    "streamlit>=1.55.0",
+    "tavily-python>=0.7.23",
 ]

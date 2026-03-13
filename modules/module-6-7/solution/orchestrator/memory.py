@@ -14,7 +14,6 @@ from abc import ABC, abstractmethod
 from logger import global_logger
 
 
-
 class BaseMemory(ABC):
     """
     Abstract base class cho các memory management strategies.
@@ -25,10 +24,48 @@ class BaseMemory(ABC):
             - N: lưu 2*N messages gần nhất (N user-assistant pairs)
         buffer (list): Danh sách tất cả messages
     """
-    def __init__(self, memory: list | None = None):
-        # Copy the list instead of direct reference to avoid duplicate appends
-        self.buffer = list(memory) if memory is not None else []
+    def __init__(self, sliding_window_size: int | None = 5):
+        self.sliding_window_size = sliding_window_size
+        self.buffer = []
     
+    @abstractmethod
+    def add(self, role: str, content: str | None = None, tool_calls=None):
+        """Thêm message vào buffer"""
+        pass
+    
+    @abstractmethod
+    def add_tool_message(self, tool_call, content: str):
+        """Thêm tool call result message vào buffer"""
+        pass
+    
+    @abstractmethod
+    def get_messages(self) -> list:
+        """Lấy messages theo strategy (all hoặc sliding window)"""
+        pass
+
+
+class WindowMemory(BaseMemory):
+    """
+    Sliding window memory strategy - giữ k cặp messages gần nhất.
+    
+    Khi buffer vượt quá 2*k messages, chỉ giữ lại k cặp gần nhất.
+    Điều này giúp hạn chế context length và chi phí API.
+    
+    Args:
+        sliding_window_size (int | None): Số cặp messages để giữ lại
+            - None: giữ tất cả (unlimited)
+            - N: giữ 2*N messages (N user-assistant pairs)
+    
+    Example:
+        >>> memory = WindowMemory(sliding_window_size=5)
+        >>> memory.add("user", "Hello")
+        >>> memory.add("assistant", "Hi there!")
+        >>> messages = memory.get_messages()  # Returns list of dicts
+    """
+    def __init__(self, sliding_window_size: int | None = 5):
+        global_logger.debug(f"Initializing WindowMemory with sliding_window_size={sliding_window_size}")
+        super().__init__(sliding_window_size=sliding_window_size)
+
     def add(self, role: str, content: str | None = None, tool_calls=None):
         """
         Thêm message vào buffer.
@@ -60,36 +97,6 @@ class BaseMemory(ABC):
             "name": tool_call.function.name,
             "content": str(content)
         })
-    
-    @abstractmethod
-    def get_messages(self) -> list:
-        """Lấy messages theo strategy (all hoặc sliding window)"""
-        pass
-
-
-class WindowMemory(BaseMemory):
-    """
-    Sliding window memory strategy - giữ k cặp messages gần nhất.
-    
-    Khi buffer vượt quá 2*k messages, chỉ giữ lại k cặp gần nhất.
-    Điều này giúp hạn chế context length và chi phí API.
-    
-    Args:
-        sliding_window_size (int | None): Số cặp messages để giữ lại
-            - None: giữ tất cả (unlimited)
-            - N: giữ 2*N messages (N user-assistant pairs)
-    
-    Example:
-        >>> memory = WindowMemory(sliding_window_size=5)
-        >>> memory.add("user", "Hello")
-        >>> memory.add("assistant", "Hi there!")
-        >>> messages = memory.get_messages()  # Returns list of dicts
-    """
-    def __init__(self, memory: list | None = None, sliding_window_size: int | None = None):
-        global_logger.debug(f"Initializing WindowMemory with sliding_window_size={sliding_window_size}")
-        super().__init__(memory=memory)
-        self.sliding_window_size = sliding_window_size
-
 
     def get_messages(self) -> list:
         """

@@ -6,7 +6,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from ui.sidebar import render_sidebar
 from ui.chat_interface import render_chat_interface
-from orchestrator.full_engine import FullChatbotEngine
+from orchestrator.engine import FullChatbotEngine
 
 
 
