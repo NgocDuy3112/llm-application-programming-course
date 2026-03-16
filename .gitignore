@@ -2,7 +2,6 @@
 .env
 .claude/
 .github/
-.claude/
 .vscode/
 .cursor/
 secrets/
