@@ -1,7 +1,7 @@
 import os
 import sys
 import streamlit as st
-sys.path.append(os.path.abspath(__file__))
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from custom_types import Provider, ContextManagementMode
 from model.adapter import *
@@ -21,6 +21,9 @@ def get_memory(mode: ContextManagementMode):
         case ContextManagementMode.OFF.value:
             return None
         case ContextManagementMode.SLIDING_WINDOW.value:
+            return WindowMemory(memory=st.session_state.get("chat_history", []), sliding_window_size=5)
+        case ContextManagementMode.RELEVANCE_FILTERING.value:
+            global_logger.warning("RELEVANCE_FILTERING chưa được triển khai, fallback về SLIDING_WINDOW")
             return WindowMemory(memory=st.session_state.get("chat_history", []), sliding_window_size=5)
         case _:
             global_logger.error(f"Unsupported context management mode: {mode}")

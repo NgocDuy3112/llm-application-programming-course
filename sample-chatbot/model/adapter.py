@@ -61,15 +61,16 @@ class BaseAdapter(ABC):
             Response object từ OpenAI API
         """
         global_logger.debug(f"Calling API with model {model}")
-        return self.client.chat.completions.create(
-            model=model, 
-            messages=messages, 
+        params = dict(
+            model=model,
+            messages=messages,
             tools=tools,
-            tool_choice=tool_choice.value,
+            tool_choice=tool_choice.value if isinstance(tool_choice, ToolChoice) else tool_choice,
             temperature=temperature,
             max_tokens=max_output_tokens,
             **kwargs
         )
+        return self.client.chat.completions.create(**params)
 
 
 class GroqAdapter(BaseAdapter):

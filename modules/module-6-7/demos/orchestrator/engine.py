@@ -72,7 +72,7 @@ class FullChatbotEngine:
                 tool_name = tool_call.function.name
                 global_logger.debug(f"Executing tool: {tool_name}")
                 try:
-                    tool_args = json.loads(tool_call.function.arguments)
+                    tool_args = json.loads(tool_call.function.arguments) or {}
                 except:
                     tool_args = {}
 

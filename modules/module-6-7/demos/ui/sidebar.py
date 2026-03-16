@@ -3,6 +3,18 @@ from logger import global_logger
 from custom_types import Provider, ContextManagementMode
 
 
+MODELS_BY_PROVIDER = {
+    Provider.GROQ.value: [
+        "openai/gpt-oss-20b", 
+        "moonshotai/kimi-k2-instruct-0905",
+        "qwen/qwen3-32b"
+    ],
+    Provider.OLLAMA.value: [
+        "qwen3:0.6b", 
+        "qwen3.5:0.8b"
+    ],
+}
+
 
 
 def render_sidebar():
@@ -21,14 +33,11 @@ def render_sidebar():
         index=0,
         key="selected_provider"
     )
+    
+    available_models = MODELS_BY_PROVIDER.get(st.session_state.selected_provider, [])
     st.sidebar.selectbox(
         label="Chọn mô hình",
-        options=[
-            "openai/gpt-oss-20b", 
-            "llama-3.3-70b-versatile", 
-            "qwen3:0.6b",
-            "qwen3.5:0.8b",
-        ],
+        options=available_models,
         index=0,
         key="selected_model"
     )
@@ -44,7 +53,7 @@ def render_sidebar():
         label="Độ dài tối đa của phản hồi (Max Output Tokens)",
         min_value=2048,
         max_value=131072,
-        value=65536,
+        value=16384,
         step=256,
         key="max_output_tokens"
     )
@@ -75,4 +84,5 @@ def render_sidebar():
     )
     if st.sidebar.button("Cập nhật cài đặt"):
         global_logger.info(f"Settings updated: Selected provider: {st.session_state.selected_provider}, model: {st.session_state.selected_model}, Temperature: {st.session_state.temperature}, Max tokens: {st.session_state.max_output_tokens}, Context Management Mode: {ContextManagementMode(st.session_state.context_management_mode)}, Tools enabled: {st.session_state.enable_tools}")
-        st.sidebar.success("Đã cập nhật cấu hình!")
+        st.session_state.chat_history = []
+        st.sidebar.success("Đã cập nhật cấu hình! Lịch sử chat đã được xóa.")
