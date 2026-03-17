@@ -1,10 +1,14 @@
 .DS_Store
 .env
+.claude/
 .github/
 .vscode/
 .cursor/
 secrets/
 data/
+*.docx
+*.pptx
+*.xlsx
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
