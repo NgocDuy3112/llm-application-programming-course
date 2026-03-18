@@ -73,6 +73,19 @@ def render_sidebar():
         index=0,
         key="context_management_mode"
     )
+    # If sliding window selected, allow user to choose number of turns (pairs) to keep
+    if st.session_state.get("context_management_mode", ContextManagementMode.OFF.value) == ContextManagementMode.SLIDING_WINDOW.value:
+        if "sliding_window_turns" not in st.session_state:
+            st.session_state.sliding_window_turns = 5
+        st.sidebar.number_input(
+            label="Số turn (sliding window)",
+            min_value=1,
+            max_value=50,
+            value=st.session_state.sliding_window_turns,
+            step=1,
+            key="sliding_window_turns",
+            help="Số cặp user-assistant được giữ lại trong sliding window",
+        )
     def on_enable_tools_change():
         if st.session_state.enable_tools:
             st.session_state.context_management_mode = ContextManagementMode.SLIDING_WINDOW.value
@@ -81,6 +94,24 @@ def render_sidebar():
         value=False,
         key="enable_tools",
         on_change=on_enable_tools_change,
+    )
+    # Safety filter toggle
+    if "enable_safety_filter" not in st.session_state:
+        st.session_state.enable_safety_filter = True
+    st.sidebar.toggle(
+        label="Bật bộ lọc an toàn",
+        value=st.session_state.enable_safety_filter,
+        key="enable_safety_filter",
+        help="Bật/tắt bộ lọc prompt-injection và các pattern liên quan tới bảo mật",
+    )
+    # Streaming output toggle
+    if "streaming_output" not in st.session_state:
+        st.session_state.streaming_output = False
+    st.sidebar.toggle(
+        label="Streaming Output",
+        value=st.session_state.streaming_output,
+        key="streaming_output",
+        help="Hiển thị đầu ra dạng streaming nếu adapter/mô hình hỗ trợ",
     )
     if st.sidebar.button("Cập nhật cài đặt"):
         global_logger.info(f"Settings updated: Selected provider: {st.session_state.selected_provider}, model: {st.session_state.selected_model}, Temperature: {st.session_state.temperature}, Max tokens: {st.session_state.max_output_tokens}, Context Management Mode: {ContextManagementMode(st.session_state.context_management_mode)}, Tools enabled: {st.session_state.enable_tools}")

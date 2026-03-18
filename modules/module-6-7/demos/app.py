@@ -21,10 +21,8 @@ def get_memory(mode: ContextManagementMode):
         case ContextManagementMode.OFF.value:
             return None
         case ContextManagementMode.SLIDING_WINDOW.value:
-            return WindowMemory(memory=st.session_state.get("chat_history", []), sliding_window_size=5)
-        case ContextManagementMode.RELEVANCE_FILTERING.value:
-            global_logger.warning("RELEVANCE_FILTERING chưa được triển khai, fallback về SLIDING_WINDOW")
-            return WindowMemory(memory=st.session_state.get("chat_history", []), sliding_window_size=5)
+            window_size = st.session_state.get("sliding_window_turns", 5)
+            return WindowMemory(memory=st.session_state.get("chat_history", []), sliding_window_size=window_size)
         case _:
             global_logger.error(f"Unsupported context management mode: {mode}")
             raise ValueError(f"Chế độ quản lý ngữ cảnh không hợp lệ: {mode}")

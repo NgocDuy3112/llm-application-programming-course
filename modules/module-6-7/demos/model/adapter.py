@@ -15,6 +15,7 @@ import os
 from abc import ABC, abstractmethod
 from openai import OpenAI
 from dotenv import load_dotenv
+import enum
 
 from logger import global_logger
 from custom_types import ToolChoice
@@ -61,11 +62,18 @@ class BaseAdapter(ABC):
             Response object từ OpenAI API
         """
         global_logger.debug(f"Calling API with model {model}")
+        # Ensure tool_choice is JSON-serializable (convert Enum to its value)
+        if isinstance(tool_choice, enum.Enum):
+            tool_choice_value = tool_choice.value
+        else:
+            # Fallback: if object has .value attribute use it, else use as-is
+            tool_choice_value = getattr(tool_choice, "value", tool_choice)
+
         params = dict(
             model=model,
             messages=messages,
             tools=tools,
-            tool_choice=tool_choice.value if isinstance(tool_choice, ToolChoice) else tool_choice,
+            tool_choice=tool_choice_value,
             temperature=temperature,
             max_tokens=max_output_tokens,
             **kwargs
