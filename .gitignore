@@ -229,3 +229,5 @@ __marimo__/
 
 #chromadb
 chroma_db/
+
+sample-chatbot-openRag/
