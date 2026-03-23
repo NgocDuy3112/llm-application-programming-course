@@ -41,7 +41,7 @@ class GroqCloudAdapter:
         ...     model="openai/gpt-oss-20b",
         ...     messages=[{"role": "user", "content": "Hello"}],
         ...     temperature=0.7,
-        ...     max_output_tokens=1024
+        ...     max_tokens=1024
         ... )
     """
     
@@ -86,7 +86,7 @@ class GroqCloudAdapter:
         model: str, 
         messages: list, 
         temperature: float,
-        max_output_tokens: int,
+        max_tokens: int,
         **kwargs
     ) -> object:
         """
@@ -98,7 +98,7 @@ class GroqCloudAdapter:
                      [{"role": "user"|"assistant"|"system", "content": "..."}]
             temperature: Độ sáng tạo (0.0 - 1.0)
                         0.0 = xác định nhất, 1.0 = sáng tạo nhất
-            max_output_tokens: Số token tối đa trong phản hồi
+            max_tokens: Số token tối đa trong phản hồi
             **kwargs: Các tham số bổ sung (top_p, stream, etc.)
         
         Returns:
@@ -110,7 +110,7 @@ class GroqCloudAdapter:
             ...     model="openai/gpt-oss-20b",
             ...     messages=[{"role": "user", "content": "Hello"}],
             ...     temperature=0.7,
-            ...     max_output_tokens=1024
+            ...     max_tokens=1024
             ... )
             >>> print(response.choices[0].message.content)
         """
@@ -118,6 +118,6 @@ class GroqCloudAdapter:
             model=model, 
             messages=messages, 
             temperature=temperature,
-            max_tokens=max_output_tokens,
+            max_tokens=max_tokens,
             **kwargs
         )
