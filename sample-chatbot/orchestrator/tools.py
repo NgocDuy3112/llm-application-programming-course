@@ -46,10 +46,10 @@ def tavily_search(query: str) -> str:
         answer = response.get("answer")
         for result in response.get("results"):
             answer += f"\n\nSource: {result.get('url')}\nTitle: {result.get('title')}"
-        global_logger.debug("Web search completed, result length")
+        global_logger.debug(f"Tavily search completed, result length: {len(answer)}")
         return answer
     except Exception as e:
-        global_logger.error(f"Error in web_search: {str(e)}")
+        global_logger.error(f"Error in tavily_search: {str(e)}")
         return f"Error: {str(e)}"
 
 
@@ -83,7 +83,7 @@ def knowledge_base_search(query: str) -> str:
 
 AVAILABLE_FUNCTIONS = {
     "get_current_date": get_current_date,
-    "web_search": web_search,
+    "tavily_search": tavily_search,
     "knowledge_base_search": knowledge_base_search,
 }
 

@@ -7,7 +7,8 @@ MODELS_BY_PROVIDER = {
     Provider.GROQ.value: [
         "openai/gpt-oss-20b", 
         "moonshotai/kimi-k2-instruct-0905",
-        "qwen/qwen3-32b"
+        "qwen/qwen3-32b",
+        "llama-3.3-70b-versatile"
     ],
     Provider.OLLAMA.value: [
         "qwen3:0.6b", 

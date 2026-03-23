@@ -204,25 +204,25 @@ class SimpleRAG:
     # 3. TÌM KIẾM (RETRIEVAL)
     # ================================================================
 
-    def search(self, query: str, top_k: int = 15) -> list[str]:
+    def search(self, query: str, top_k: int = 15) -> tuple[list[str], list[dict]]:
         """
         Tìm kiếm documents tương tự với query trong ChromaDB.
         
         Cách hoạt động:
             1. Embed query thành vector
             2. Tìm top_k vectors gần nhất trong ChromaDB (cosine similarity)
-            3. Trả về danh sách text tương ứng
+            3. Trả về danh sách text và metadata tương ứng
         
         Args:
             query: Câu hỏi của người dùng
             top_k: Số kết quả tối đa cần lấy
             
         Returns:
-            list[str]: Danh sách đoạn văn bản liên quan
+            tuple[list[str], list[dict]]: Danh sách đoạn văn bản và metadata (source, ...)
         """
         if self.doc_count() == 0:
             global_logger.debug("Knowledge base is empty, returning empty results")
-            return []
+            return [], []
 
         global_logger.debug(f"Searching knowledge base for: '{query[:50]}...'")
 
@@ -233,11 +233,13 @@ class SimpleRAG:
         results = self.collection.query(
             query_embeddings=query_embedding,
             n_results=min(top_k, self.doc_count()),  # Không lấy nhiều hơn số doc có
+            include=["documents", "metadatas"],
         )
 
         documents = results.get("documents", [[]])[0]
+        metadatas = results.get("metadatas", [[]])[0]
         global_logger.debug(f"Found {len(documents)} results from vector search")
-        return documents
+        return documents, metadatas
 
     # ================================================================
     # 4. RERANKING
@@ -297,19 +299,24 @@ class SimpleRAG:
         """
         global_logger.info(f"RAG retrieve for query: '{query}...'")
 
-        # Bước 1: Vector search
-        documents = self.search(query, top_k=search_top_k)
+        # Bước 1: Vector search (with metadata)
+        documents, metadatas = self.search(query, top_k=search_top_k)
 
         if not documents:
             return "Không tìm thấy thông tin liên quan trong knowledge base."
 
-        # Bước 2: Rerank
-        reranked_docs = self.rerank(query, documents, top_k=rerank_top_k)
+        # Bước 2: Rerank inline (giữ metadata đồng bộ với documents)
+        pairs = [[query, doc] for doc in documents]
+        scores = self.cross_encoder.predict(pairs)
+        ranked_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:rerank_top_k]
+        reranked_docs  = [documents[i] for i in ranked_indices]
+        reranked_metas = [metadatas[i] if i < len(metadatas) else {} for i in ranked_indices]
 
-        # Bước 3: Format thành context string
+        # Bước 3: Format thành context string (có source)
         context_parts = []
-        for i, doc in enumerate(reranked_docs, 1):
-            context_parts.append(f"[Tài liệu {i}]\n{doc}")
+        for i, (doc, meta) in enumerate(zip(reranked_docs, reranked_metas), 1):
+            source = meta.get("source", "Unknown") if meta else "Unknown"
+            context_parts.append(f"[Tài liệu {i} — 📄 {source}]\n{doc}")
 
         context = "\n\n---\n\n".join(context_parts)
         global_logger.info(f"RAG retrieve complete: {len(reranked_docs)} documents, {len(context)} chars")
