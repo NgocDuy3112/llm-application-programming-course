@@ -58,7 +58,7 @@ class ChatbotEngine:
         ...     model="openai/gpt-oss-20b",
         ...     input="Hello, how are you?",
         ...     temperature=0.7,
-        ...     max_output_tokens=1024
+        ...     max_tokens=1024
         ... )
     """
     
@@ -76,7 +76,7 @@ class ChatbotEngine:
         model: str, 
         input: str, 
         temperature: float,
-        max_output_tokens: int,
+        max_tokens: int,
         **kwargs
     ) -> str:
         """
@@ -86,7 +86,7 @@ class ChatbotEngine:
             model: Tên model sử dụng (VD: "openai/gpt-oss-20b")
             input: Tin nhắn của người dùng
             temperature: Độ sáng tạo (0.0 - 1.0)
-            max_output_tokens: Số token tối đa trong phản hồi
+            max_tokens: Số token tối đa trong phản hồi
             **kwargs: Các tham số bổ sung cho API
         
         Returns:
@@ -106,7 +106,7 @@ class ChatbotEngine:
             model=model, 
             messages=user_message, 
             temperature=temperature,
-            max_output_tokens=max_output_tokens,
+            max_tokens=max_tokens,
             **kwargs
         )
         
@@ -134,7 +134,7 @@ class FakeChatbotEngine:
         ...     model="test-model",
         ...     input="Hello",
         ...     temperature=0.5,
-        ...     max_output_tokens=100
+        ...     max_tokens=100
         ... )
         >>> print(response)
         "Đây là phản hồi giả cho tin nhắn: 'Hello' ..."
@@ -145,7 +145,7 @@ class FakeChatbotEngine:
         model: str, 
         input: str,
         temperature: float,
-        max_output_tokens: int,
+        max_tokens: int,
         **kwargs
     ) -> str:
         """
@@ -155,10 +155,10 @@ class FakeChatbotEngine:
             model: Tên model (không sử dụng)
             input: Tin nhắn của người dùng
             temperature: Độ sáng tạo (không sử dụng)
-            max_output_tokens: Số token tối đa (không sử dụng)
+            max_tokens: Số token tối đa (không sử dụng)
             **kwargs: Các tham số khác (không sử dụng)
         
         Returns:
             str: Phản hồi giả định chứa thông tin request
         """
-        return f"Đây là phản hồi giả cho tin nhắn: '{input}' (model: {model}, temperature: {temperature}, max_output_tokens: {max_output_tokens}), các tham số khác: {kwargs})"
+        return f"Đây là phản hồi giả cho tin nhắn: '{input}' (model: {model}, temperature: {temperature}, max_tokens: {max_tokens}), các tham số khác: {kwargs})"

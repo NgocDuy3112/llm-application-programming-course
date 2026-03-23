@@ -19,7 +19,7 @@ def render_chat_interface(engine: object):
                         model="openai/gpt-oss-20b", 
                         input=user_input,
                         temperature=st.session_state.temperature,
-                        max_output_tokens=st.session_state.max_output_tokens,
+                        max_tokens=st.session_state.max_tokens,
                     )
                     st.markdown(assistant_reply)
                     st.session_state.chat_history.append({"role": "assistant", "message": assistant_reply})

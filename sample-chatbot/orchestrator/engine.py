@@ -31,7 +31,7 @@ class FullChatbotEngine:
         tool_choice: ToolChoice = ToolChoice.NONE,
         instruction: str | None = None,
         temperature: float = 0.2,
-        max_output_tokens: int = 65536,
+        max_tokens: int = 65536,
         safety_enabled: bool = True,
         **kwargs
     ) -> tuple[str, str]:
@@ -120,7 +120,7 @@ class FullChatbotEngine:
                 tools=tools,
                 tool_choice=tool_choice,
                 temperature=temperature,
-                max_output_tokens=max_output_tokens,
+                max_tokens=max_tokens,
                 **kwargs
             )
             last_message = response.choices[0].message

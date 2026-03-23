@@ -55,7 +55,7 @@ def render_sidebar():
         max_value=131072,
         value=16384,
         step=256,
-        key="max_output_tokens"
+        key="max_tokens"
     )
     st.sidebar.text_area(
         label="Câu lệnh hệ thống (System Instruction)",
@@ -114,6 +114,6 @@ def render_sidebar():
         help="Hiển thị đầu ra dạng streaming nếu adapter/mô hình hỗ trợ",
     )
     if st.sidebar.button("Cập nhật cài đặt"):
-        global_logger.info(f"Settings updated: Selected provider: {st.session_state.selected_provider}, model: {st.session_state.selected_model}, Temperature: {st.session_state.temperature}, Max tokens: {st.session_state.max_output_tokens}, Context Management Mode: {ContextManagementMode(st.session_state.context_management_mode)}, Tools enabled: {st.session_state.enable_tools}")
+        global_logger.info(f"Settings updated: Selected provider: {st.session_state.selected_provider}, model: {st.session_state.selected_model}, Temperature: {st.session_state.temperature}, Max tokens: {st.session_state.max_tokens}, Context Management Mode: {ContextManagementMode(st.session_state.context_management_mode)}, Tools enabled: {st.session_state.enable_tools}")
         st.session_state.chat_history = []
         st.sidebar.success("Đã cập nhật cấu hình! Lịch sử chat đã được xóa.")

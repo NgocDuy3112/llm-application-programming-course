@@ -12,7 +12,7 @@ Các tham số có thể điều chỉnh:
 
 Session State Keys:
 - temperature: Giá trị temperature hiện tại
-- max_output_tokens: Giá trị max tokens hiện tại
+- max_tokens: Giá trị max tokens hiện tại
 - system_prompt: System prompt hiện tại
 - context_management_mode: Chế độ quản lý ngữ cảnh
 """
@@ -39,7 +39,7 @@ def render_sidebar():
     
     Session State được sử dụng:
     - st.session_state.temperature: float (0.0 - 1.0)
-    - st.session_state.max_output_tokens: int (2048 - 131072)
+    - st.session_state.max_tokens: int (2048 - 131072)
     - st.session_state.system_prompt: str
     - st.session_state.context_management_mode: str
     
@@ -79,7 +79,7 @@ def render_sidebar():
         max_value=131072,
         value=65536,
         step=256,
-        key="max_output_tokens"
+        key="max_tokens"
     )
     
     # ==========================================================================
@@ -126,6 +126,6 @@ def render_sidebar():
         # Expander hiển thị chi tiết cấu hình
         with st.sidebar.expander("Xem chi tiết cấu hình", expanded=True):
             st.markdown(f"**Độ sáng tạo (Temperature):** {st.session_state.temperature}")
-            st.markdown(f"**Số lượng token tối đa (Max Output Tokens):** {st.session_state.max_output_tokens}")
+            st.markdown(f"**Số lượng token tối đa (Max Output Tokens):** {st.session_state.max_tokens}")
             st.markdown(f"**Câu lệnh hệ thống (System Prompt):** {st.session_state.system_prompt}")
             st.markdown(f"**Chế độ quản lý ngữ cảnh (Context Management Mode):** {st.session_state.context_management_mode}")

@@ -44,7 +44,7 @@ class BaseAdapter(ABC):
         tools: list,
         tool_choice: ToolChoice,
         temperature: float,
-        max_output_tokens: int,
+        max_tokens: int,
         **kwargs
     ):
         """
@@ -56,7 +56,7 @@ class BaseAdapter(ABC):
             tools: Tool definitions (nếu None thì không dùng tool)
             tool_choice: Tool usage mode (ToolChoice)
             temperature: Creativity level
-            max_output_tokens: Max tokens in response
+            max_tokens: Max tokens in response
             
         Returns:
             Response object từ OpenAI API
@@ -75,7 +75,7 @@ class BaseAdapter(ABC):
             tools=tools,
             tool_choice=tool_choice_value,
             temperature=temperature,
-            max_tokens=max_output_tokens,
+            max_tokens=max_tokens,
             **kwargs
         )
         return self.client.chat.completions.create(**params)

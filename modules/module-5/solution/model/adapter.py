@@ -18,13 +18,13 @@ class GroqCloudAdapter:
         model: str, 
         messages: list, 
         temperature: float,
-        max_output_tokens: int,
+        max_tokens: int,
         **kwargs
     ):
         return self.client.chat.completions.create(
             model=model, 
             messages=messages, 
             temperature=temperature,
-            max_tokens=max_output_tokens,
+            max_tokens=max_tokens,
             **kwargs
         )

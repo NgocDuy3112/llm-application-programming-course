@@ -46,7 +46,7 @@ def render_chat_interface(engine: object):
             temperature=st.session_state.temperature,
             tools=DEFAULT_TOOLS if st.session_state.enable_tools else None,
             tool_choice=ToolChoice.AUTO if st.session_state.enable_tools else ToolChoice.NONE,
-            max_output_tokens=st.session_state.max_output_tokens,
+            max_tokens=st.session_state.max_tokens,
             instruction=st.session_state.instruction,
             safety_enabled=st.session_state.get("enable_safety_filter", True),
             streaming_output=st.session_state.get("streaming_output", False),
