@@ -6,76 +6,76 @@ from logger import global_logger
 from custom_types import ToolChoice
 
 
+def _render_retrieved_docs(docs_str: str):
+    """Helper: render tài liệu tham khảo từ context string."""
+    chunks = docs_str.split("\n\n---\n\n")
+    with st.expander(f"📚 Tài liệu tham khảo ({len(chunks)} đoạn)", expanded=False):
+        for chunk in chunks:
+            lines = chunk.strip().split("\n", 1)
+            header = lines[0].strip()
+            body   = lines[1].strip() if len(lines) > 1 else chunk.strip()
+            st.markdown(f"**{header}**")
+            st.markdown(
+                f"<div style='background:#f8f9fa;border-left:3px solid #4CAF50;"
+                f"padding:8px 12px;border-radius:4px;font-size:0.9em;"
+                f"white-space:pre-wrap;'>{body}</div>",
+                unsafe_allow_html=True,
+            )
+            st.divider()
+
 
 def render_chat_interface(engine: object):
     global_logger.debug("Rendering chat interface")
     st.title("Xây dựng chatbot cơ bản")
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
+    if "retrieved_docs_map" not in st.session_state:
+        st.session_state.retrieved_docs_map = {}
 
     with st.container():
-        for entry in st.session_state.chat_history:
-            st.chat_message(entry["role"]).markdown(entry["content"])
+        for i, entry in enumerate(st.session_state.chat_history):
+            with st.chat_message(entry["role"]):
+                st.markdown(entry["content"])
+                if i in st.session_state.retrieved_docs_map:
+                    _render_retrieved_docs(st.session_state.retrieved_docs_map[i])
         global_logger.debug(f"Displayed {len(st.session_state.chat_history)} messages from chat history")
 
     user_input = st.chat_input("Nhập tin nhắn của bạn ở đây...", key="chat_input")
     if user_input:
-        # Extract any <think>...</think> blocks from the user's input and treat them as manual reasoning
-        think_matches = re.findall(r"<think>(.*?)</think>", user_input, flags=re.DOTALL | re.IGNORECASE)
+        think_matches = re.findall(r"grounded(.*?)grounded", user_input, flags=re.DOTALL | re.IGNORECASE)
         user_thinking = "\n\n".join(m.strip() for m in think_matches).strip() if think_matches else ""
-        # Remove the <think> blocks from the visible message sent to the model/UI
-        cleaned_input = re.sub(r"<think>.*?</think>", "", user_input, flags=re.DOTALL | re.IGNORECASE).strip()
+        cleaned_input = re.sub(r"grounded.*?grounded", "", user_input, flags=re.DOTALL | re.IGNORECASE).strip()
         visible_user_msg = cleaned_input if cleaned_input else "[Phần suy nghĩ nội bộ đã được tách ra]"
 
         global_logger.debug(f"Processing user input: {visible_user_msg[:50]}...")
         with st.chat_message("user"):
             st.markdown(visible_user_msg)
 
-        # Only append to UI chat_history, engine.memory handles its own buffer
-        st.session_state.chat_history.append({"role": "user", "content": visible_user_msg})
+        st.session_state.chat_history.append({"role": "user", "content": user_input})
+        assistant_reply = engine.response(
+            model=st.session_state.selected_model,
+            input=user_input,
+            temperature=st.session_state.temperature,
+            tools=DEFAULT_TOOLS if st.session_state.enable_tools else None,
+            tool_choice=ToolChoice.AUTO if st.session_state.enable_tools else ToolChoice.NONE,
+            max_tokens=st.session_state.max_tokens,
+            instruction=st.session_state.instruction
+        )
+        global_logger.debug(f"Assistant reply generated, length: {len(assistant_reply)}")
 
-        # Send cleaned input (without <think> blocks) to the model
-        with st.spinner("Đang suy nghĩ..."):
-            thinking_from_model, assistant_reply = engine.response(
-                model=st.session_state.selected_model,
-                input=cleaned_input,
-                temperature=st.session_state.temperature,
-                tools=DEFAULT_TOOLS if st.session_state.enable_tools else None,
-                tool_choice=ToolChoice.AUTO if st.session_state.enable_tools else ToolChoice.NONE,
-                max_tokens=st.session_state.max_tokens,
-                instruction=st.session_state.instruction,
-                safety_enabled=st.session_state.get("enable_safety_filter", True),
-                streaming_output=st.session_state.get("streaming_output", False),
-            )
+        retrieved_docs = st.session_state.pop("last_retrieved_docs", None)
+        global_logger.debug(f"Retrieved docs: {retrieved_docs if retrieved_docs else 'None'}")
 
-        # If the assistant reply itself contains <think> tags, extract them and remove from visible text
-        reply_think_matches = re.findall(r"<think>(.*?)</think>", assistant_reply, flags=re.DOTALL | re.IGNORECASE)
-        reply_thinking = "\n\n".join(m.strip() for m in reply_think_matches).strip() if reply_think_matches else ""
-        assistant_reply_clean = re.sub(r"<think>.*?</think>", "", assistant_reply, flags=re.DOTALL | re.IGNORECASE).strip()
-
-        # Combine user-provided thinking, model reasoning (from response()), and any reply <think> into a single reasoning block
-        reasoning_parts: list[str] = []
-        if user_thinking:
-            reasoning_parts.append(user_thinking)
-        if thinking_from_model:
-            reasoning_parts.append(thinking_from_model)
-        if reply_thinking:
-            reasoning_parts.append(reply_thinking)
-        combined_thinking = "\n\n".join(reasoning_parts).strip()
-
-        global_logger.debug(f"Assistant reply generated, length: {len(assistant_reply_clean)}")
         with st.chat_message("assistant"):
-            # Show reasoning (suy luận) above the visible assistant reply
-            if combined_thinking:
-                with st.expander("💭 SUY LUẬN", expanded=False):
-                    st.markdown(combined_thinking)
-            st.markdown(assistant_reply_clean)
+            st.markdown(assistant_reply)
+            if retrieved_docs:
+                _render_retrieved_docs(retrieved_docs)
 
-        # Only append to UI chat_history, engine.memory handles its own buffer
-        st.session_state.chat_history.append({
-            "role": "assistant", 
-            "content": assistant_reply_clean, 
-            "thinking": combined_thinking
-        })
+        st.session_state.chat_history.append({"role": "assistant", "content": assistant_reply})
+
+        if retrieved_docs:
+            msg_index = len(st.session_state.chat_history) - 1
+            st.session_state.retrieved_docs_map[msg_index] = retrieved_docs
+
         global_logger.debug(f"Updated chat history, total messages: {len(st.session_state.chat_history)}")
         st.rerun()

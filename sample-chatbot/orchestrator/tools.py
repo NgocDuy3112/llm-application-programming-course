@@ -1,12 +1,24 @@
 from tavily import TavilyClient
 from datetime import date
 import os
+import streamlit as st
 from dotenv import load_dotenv
 from logger import global_logger
 
 
 load_dotenv(dotenv_path=".env", override=True)
 global_logger.debug("Loading environment variables from .env")
+
+
+# ---- RAG instance (được set từ app.py) ----
+# Biến module-level để tools có thể truy cập RAG instance
+_rag_instance = None
+
+def set_rag_instance(rag):
+    """Được gọi từ app.py để truyền RAG instance vào tools module."""
+    global _rag_instance
+    _rag_instance = rag
+    global_logger.debug("RAG instance set in tools module")
 
 
 if os.getenv("TAVILY_API_KEY"):
@@ -34,10 +46,10 @@ def tavily_search(query: str) -> str:
         answer = response.get("answer")
         for result in response.get("results"):
             answer += f"\n\nSource: {result.get('url')}\nTitle: {result.get('title')}"
-        global_logger.debug("Web search completed, result length")
+        global_logger.debug(f"Tavily search completed, result length: {len(answer)}")
         return answer
     except Exception as e:
-        global_logger.error(f"Error in web_search: {str(e)}")
+        global_logger.error(f"Error in tavily_search: {str(e)}")
         return f"Error: {str(e)}"
 
 
@@ -47,9 +59,32 @@ def get_current_date() -> str:
     return date_str
 
 
+def knowledge_base_search(query: str) -> str:
+    """
+    Tìm kiếm thông tin từ knowledge base (tài liệu đã upload).
+    Sử dụng RAG pipeline: vector search → cross-encoder reranking.
+    """
+    global_logger.debug(f"Executing knowledge_base_search with query: {query}")
+    if _rag_instance is None:
+        global_logger.error("RAG instance not initialized")
+        return "Error: Knowledge base chưa được khởi tạo."
+    if _rag_instance.doc_count() == 0:
+        return "Knowledge base hiện đang trống. Chưa có tài liệu nào được upload."
+    try:
+        result = _rag_instance.retrieve(query)
+        # Lưu kết quả retrieve vào session_state để hiển thị trên UI
+        st.session_state["last_retrieved_docs"] = result
+        global_logger.debug(f"knowledge_base_search completed, result length: {len(result)}")
+        return result
+    except Exception as e:
+        global_logger.error(f"Error in knowledge_base_search: {str(e)}")
+        return f"Error: {str(e)}"
+
+
 AVAILABLE_FUNCTIONS = {
     "get_current_date": get_current_date,
     "tavily_search": tavily_search,
+    "knowledge_base_search": knowledge_base_search,
 }
 
 
@@ -76,10 +111,23 @@ DEFAULT_TOOLS = [
         "function": {
             "name": "get_current_date",
             "description": "Lấy ngày hiện tại",
+            "parameters": {},
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "knowledge_base_search",
+            "description": "Tìm kiếm thông tin từ knowledge base (tài liệu đã được upload). Sử dụng tool này khi người dùng hỏi về nội dung tài liệu hoặc cần thông tin từ dữ liệu đã cung cấp.",
             "parameters": {
                 "type": "object",
-                "properties": {},
-                "required": [],
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Câu truy vấn tìm kiếm trong knowledge base.",
+                    },
+                },
+                "required": ["query"],
             },
         }
     }

@@ -7,7 +7,8 @@ MODELS_BY_PROVIDER = {
     Provider.GROQ.value: [
         "openai/gpt-oss-20b", 
         "moonshotai/kimi-k2-instruct-0905",
-        "qwen/qwen3-32b"
+        "qwen/qwen3-32b",
+        "llama-3.3-70b-versatile"
     ],
     Provider.OLLAMA.value: [
         "qwen3:0.6b", 
@@ -67,7 +68,7 @@ def render_sidebar():
         label="Chọn chế độ quản lý ngữ cảnh",
         options=[
             ContextManagementMode.OFF.value,
-            ContextManagementMode.SLIDING_WINDOW.value
+            ContextManagementMode.SLIDING_WINDOW.value,
         ],
         index=0,
         key="context_management_mode"
@@ -94,24 +95,72 @@ def render_sidebar():
         key="enable_tools",
         on_change=on_enable_tools_change,
     )
-    # Safety filter toggle
-    if "enable_safety_filter" not in st.session_state:
-        st.session_state.enable_safety_filter = True
-    st.sidebar.toggle(
-        label="Bật bộ lọc an toàn",
-        value=st.session_state.enable_safety_filter,
-        key="enable_safety_filter",
-        help="Bật/tắt bộ lọc prompt-injection và các pattern liên quan tới bảo mật",
+
+    # ================================================================
+    # KNOWLEDGE BASE (RAG) SECTION
+    # ================================================================
+    st.sidebar.divider()
+    st.sidebar.subheader("📚 Knowledge Base")
+
+    # Hiển thị số lượng chunks hiện có
+    rag = st.session_state.get("rag")
+    if rag:
+        chunk_count = rag.doc_count()
+        if chunk_count > 0:
+            st.sidebar.info(f"📄 {chunk_count} chunks trong Knowledge Base")
+        else:
+            st.sidebar.caption("Knowledge base đang trống")
+    
+    # Upload file
+    uploaded_files = st.sidebar.file_uploader(
+        label="Upload tài liệu",
+        type=["txt", "md", "pdf", "docx", "pptx", "xlsx", "html"],
+        accept_multiple_files=True,
+        help="Hỗ trợ: TXT, MD, PDF, DOCX, PPTX, XLSX, HTML",
+        key="rag_file_uploader",
     )
-    # Streaming output toggle
-    if "streaming_output" not in st.session_state:
-        st.session_state.streaming_output = False
-    st.sidebar.toggle(
-        label="Streaming Output",
-        value=st.session_state.streaming_output,
-        key="streaming_output",
-        help="Hiển thị đầu ra dạng streaming nếu adapter/mô hình hỗ trợ",
-    )
+
+    # Nút thêm tài liệu
+    if st.sidebar.button("📥 Thêm tài liệu vào KB", use_container_width=True):
+        if not uploaded_files:
+            st.sidebar.warning("Vui lòng chọn file trước!")
+        elif not rag:
+            st.sidebar.error("RAG chưa được khởi tạo!")
+        else:
+            try:
+                with st.spinner("Đang xử lý tài liệu..."):
+                    num_chunks = rag.add_documents(uploaded_files)
+                st.sidebar.success(f"✅ Đã thêm {num_chunks} chunks!")
+                global_logger.info(f"Added {num_chunks} chunks to knowledge base")
+            except Exception as e:
+                st.sidebar.error(f"❌ Lỗi: {str(e)}")
+                global_logger.error(f"Error adding documents: {str(e)}")
+
+    # Danh sách file + xóa riêng lẻ
+    if rag and rag.doc_count() > 0:
+        sources = rag.list_sources()
+        if sources:
+            with st.sidebar.expander(f"📁 Tài liệu ({len(sources)} file)", expanded=False):
+                for item in sources:
+                    col1, col2 = st.columns([3, 1])
+                    with col1:
+                        st.caption(f"📄 {item['source']} ({item['chunk_count']} chunks)")
+                    with col2:
+                        if st.button("🗑️", key=f"del_{item['source']}", help=f"Xóa {item['source']}"):
+                            deleted = rag.delete_source(item["source"])
+                            st.success(f"✅ Đã xóa {deleted} chunks!")
+                            global_logger.info(f"Deleted source: {item['source']} ({deleted} chunks)")
+                            st.rerun()
+
+        # Nút xóa toàn bộ
+        if st.sidebar.button("🗑️ Xóa toàn bộ Knowledge Base", use_container_width=True):
+            rag.clear()
+            st.sidebar.success("✅ Đã xóa toàn bộ Knowledge Base!")
+            global_logger.info("Knowledge base cleared by user")
+            st.rerun()
+
+    st.sidebar.divider()
+
     if st.sidebar.button("Cập nhật cài đặt"):
         global_logger.info(f"Settings updated: Selected provider: {st.session_state.selected_provider}, model: {st.session_state.selected_model}, Temperature: {st.session_state.temperature}, Max tokens: {st.session_state.max_tokens}, Context Management Mode: {ContextManagementMode(st.session_state.context_management_mode)}, Tools enabled: {st.session_state.enable_tools}")
         st.session_state.chat_history = []

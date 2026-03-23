@@ -11,4 +11,10 @@ dependencies = [
     "pyyaml>=6.0.3",
     "streamlit>=1.55.0",
     "tavily-python>=0.7.23",
+    "chromadb>=1.0.0",
+    "sentence-transformers>=3.0.0",
+    "langchain-text-splitters>=0.3.0",
+    "pypdf>=5.0.0",
+    "python-docx>=1.1.0",
+    "markitdown>=0.1.0",
 ]
