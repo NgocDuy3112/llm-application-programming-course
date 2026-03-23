@@ -67,8 +67,7 @@ def render_sidebar():
         label="Chọn chế độ quản lý ngữ cảnh",
         options=[
             ContextManagementMode.OFF.value,
-            ContextManagementMode.SLIDING_WINDOW.value,
-            ContextManagementMode.RELEVANCE_FILTERING.value
+            ContextManagementMode.SLIDING_WINDOW.value
         ],
         index=0,
         key="context_management_mode"

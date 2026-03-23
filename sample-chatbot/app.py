@@ -23,10 +23,6 @@ def get_memory(mode: ContextManagementMode):
         case ContextManagementMode.SLIDING_WINDOW.value:
             window_size = st.session_state.get("sliding_window_turns", 5)
             return WindowMemory(memory=st.session_state.get("chat_history", []), sliding_window_size=window_size)
-        case ContextManagementMode.RELEVANCE_FILTERING.value:
-            global_logger.warning("RELEVANCE_FILTERING chưa được triển khai, fallback về SLIDING_WINDOW")
-            window_size = st.session_state.get("sliding_window_turns", 5)
-            return WindowMemory(memory=st.session_state.get("chat_history", []), sliding_window_size=window_size)
         case _:
             global_logger.error(f"Unsupported context management mode: {mode}")
             raise ValueError(f"Chế độ quản lý ngữ cảnh không hợp lệ: {mode}")
@@ -56,6 +52,7 @@ def get_chatbot_engine(provider: Provider) -> FullChatbotEngine:
 
 
 def main():
+    st.set_page_config(layout="wide")
     if "selected_provider" not in st.session_state:
         st.session_state.selected_provider = Provider.GROQ.value
     if "selected_model" not in st.session_state:

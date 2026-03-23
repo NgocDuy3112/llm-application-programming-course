@@ -15,12 +15,7 @@ def render_chat_interface(engine: object):
 
     with st.container():
         for entry in st.session_state.chat_history:
-            with st.chat_message(entry["role"]):
-                # Show reasoning/"suy luận" above the assistant message when available
-                if entry.get("thinking") and entry.get("role") == "assistant":
-                    with st.expander("💭 SUY LUẬN", expanded=False):
-                        st.markdown(entry["thinking"])
-                st.markdown(entry["content"])
+            st.chat_message(entry["role"]).markdown(entry["content"])
         global_logger.debug(f"Displayed {len(st.session_state.chat_history)} messages from chat history")
 
     user_input = st.chat_input("Nhập tin nhắn của bạn ở đây...", key="chat_input")
@@ -40,17 +35,18 @@ def render_chat_interface(engine: object):
         st.session_state.chat_history.append({"role": "user", "content": visible_user_msg})
 
         # Send cleaned input (without <think> blocks) to the model
-        thinking_from_model, assistant_reply = engine.response(
-            model=st.session_state.selected_model,
-            input=cleaned_input,
-            temperature=st.session_state.temperature,
-            tools=DEFAULT_TOOLS if st.session_state.enable_tools else None,
-            tool_choice=ToolChoice.AUTO if st.session_state.enable_tools else ToolChoice.NONE,
-            max_tokens=st.session_state.max_tokens,
-            instruction=st.session_state.instruction,
-            safety_enabled=st.session_state.get("enable_safety_filter", True),
-            streaming_output=st.session_state.get("streaming_output", False),
-        )
+        with st.spinner("Đang suy nghĩ..."):
+            thinking_from_model, assistant_reply = engine.response(
+                model=st.session_state.selected_model,
+                input=cleaned_input,
+                temperature=st.session_state.temperature,
+                tools=DEFAULT_TOOLS if st.session_state.enable_tools else None,
+                tool_choice=ToolChoice.AUTO if st.session_state.enable_tools else ToolChoice.NONE,
+                max_tokens=st.session_state.max_tokens,
+                instruction=st.session_state.instruction,
+                safety_enabled=st.session_state.get("enable_safety_filter", True),
+                streaming_output=st.session_state.get("streaming_output", False),
+            )
 
         # If the assistant reply itself contains <think> tags, extract them and remove from visible text
         reply_think_matches = re.findall(r"<think>(.*?)</think>", assistant_reply, flags=re.DOTALL | re.IGNORECASE)
@@ -76,5 +72,10 @@ def render_chat_interface(engine: object):
             st.markdown(assistant_reply_clean)
 
         # Only append to UI chat_history, engine.memory handles its own buffer
-        st.session_state.chat_history.append({"role": "assistant", "content": assistant_reply_clean, "thinking": combined_thinking})
+        st.session_state.chat_history.append({
+            "role": "assistant", 
+            "content": assistant_reply_clean, 
+            "thinking": combined_thinking
+        })
         global_logger.debug(f"Updated chat history, total messages: {len(st.session_state.chat_history)}")
+        st.rerun()
