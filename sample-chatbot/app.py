@@ -1,7 +1,7 @@
 import os
 import sys
 import streamlit as st
-sys.path.append(os.path.abspath(__file__))
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from dotenv import load_dotenv
 from custom_types import Provider, ContextManagementMode
@@ -27,7 +27,8 @@ def get_memory(mode: ContextManagementMode):
         case ContextManagementMode.OFF.value:
             return None
         case ContextManagementMode.SLIDING_WINDOW.value:
-            return WindowMemory(memory=st.session_state.get("chat_history", []), sliding_window_size=5)
+            window_size = st.session_state.get("sliding_window_turns", 5)
+            return WindowMemory(memory=st.session_state.get("chat_history", []), sliding_window_size=window_size)
         case _:
             global_logger.error(f"Unsupported context management mode: {mode}")
             raise ValueError(f"Chế độ quản lý ngữ cảnh không hợp lệ: {mode}")
@@ -70,6 +71,7 @@ def get_chatbot_engine(provider: Provider) -> FullChatbotEngine:
 
 
 def main():
+    st.set_page_config(layout="wide")
     if "selected_provider" not in st.session_state:
         st.session_state.selected_provider = Provider.GROQ.value
     if "selected_model" not in st.session_state:

@@ -1,3 +1,4 @@
+import re
 import streamlit as st
 
 from orchestrator.tools import DEFAULT_TOOLS
@@ -26,9 +27,17 @@ def render_chat_interface(engine: object):
 
     user_input = st.chat_input("Nhập tin nhắn của bạn ở đây...", key="chat_input")
     if user_input:
-        global_logger.debug(f"Processing user input: {user_input[:50]}...")
+        # Extract any <think>...</think> blocks from the user's input and treat them as manual reasoning
+        think_matches = re.findall(r"<think>(.*?)</think>", user_input, flags=re.DOTALL | re.IGNORECASE)
+        user_thinking = "\n\n".join(m.strip() for m in think_matches).strip() if think_matches else ""
+        # Remove the <think> blocks from the visible message sent to the model/UI
+        cleaned_input = re.sub(r"<think>.*?</think>", "", user_input, flags=re.DOTALL | re.IGNORECASE).strip()
+        visible_user_msg = cleaned_input if cleaned_input else "[Phần suy nghĩ nội bộ đã được tách ra]"
+
+        global_logger.debug(f"Processing user input: {visible_user_msg[:50]}...")
         with st.chat_message("user"):
-            st.markdown(user_input)
+            st.markdown(visible_user_msg)
+
         # Only append to UI chat_history, engine.memory handles its own buffer
         st.session_state.chat_history.append({"role": "user", "content": user_input})
         assistant_reply = engine.response(
@@ -60,3 +69,4 @@ def render_chat_interface(engine: object):
             st.session_state.retrieved_docs_map[msg_index] = retrieved_docs
         # Only append to UI chat_history, engine.memory handles its own buffer
         global_logger.debug(f"Updated chat history, total messages: {len(st.session_state.chat_history)}")
+        st.rerun()

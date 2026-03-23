@@ -17,8 +17,8 @@ else:
     tavily_client = None
 
 
-def web_search(query: str) -> str:
-    global_logger.debug(f"Executing web_search with query: {query}")
+def tavily_search(query: str) -> str:
+    global_logger.debug(f"Executing tavily_search with query: {query}")
     if not tavily_client:
         global_logger.error("Tavily client not initialized, API key missing")
         return "Error: Tavily client not initialized"
@@ -28,37 +28,18 @@ def web_search(query: str) -> str:
             include_answer=True,
             time_range="year"
         )
-        result = response.get("answer", "No answer from Tavily") if response else "No response from Tavily"
-        global_logger.debug(f"Web search completed, result length: {len(result) if result else 0}")
-        return result
+        if response is None:
+            global_logger.warning("Tavily search returned no response")
+            return "No response from Tavily"
+        answer = response.get("answer")
+        for result in response.get("results"):
+            answer += f"\n\nSource: {result.get('url')}\nTitle: {result.get('title')}"
+        global_logger.debug("Web search completed, result length")
+        return answer
     except Exception as e:
         global_logger.error(f"Error in web_search: {str(e)}")
         return f"Error: {str(e)}"
 
-
-def get_courses(instructions: str) -> str:
-    global_logger.debug(f"Executing get_courses with instructions: {instructions}")
-    if not tavily_client:
-        global_logger.error("Tavily client not initialized, API key missing")
-        return "Error: Tavily client not initialized"
-    try:
-        response = tavily_client.crawl(
-            url="https://csc.edu.vn/",
-            instructions=instructions,
-            limit=3,
-            extract_depth="basic"
-        )
-        crawl_results = response.get("results", []) if response else []
-        final_output = ""
-        for result in crawl_results:
-            raw_content = result.get("raw_content", "")
-            url = result.get("url", "")
-            final_output += f"URL: {url}\nContent:\n{raw_content}\n\n"
-        global_logger.debug(f"get_courses completed, total results: {len(crawl_results)}")
-        return final_output.strip() if final_output else "No relevant courses found"
-    except Exception as e:
-        global_logger.error(f"Error in get_courses: {str(e)}")
-        return f"Error: {str(e)}"
 
 
 def get_current_date() -> str:
@@ -68,9 +49,8 @@ def get_current_date() -> str:
 
 
 AVAILABLE_FUNCTIONS = {
-    "get_courses": get_courses,
     "get_current_date": get_current_date,
-    "web_search": web_search,
+    "tavily_search": tavily_search,
 }
 
 
@@ -78,7 +58,7 @@ DEFAULT_TOOLS = [
     {
         "type": "function",
         "function": {
-            "name": "web_search",
+            "name": "tavily_search",
             "description": "Thực hiện tìm kiếm trên web sử dụng Tavily",
             "parameters": {
                 "type": "object",
@@ -95,26 +75,13 @@ DEFAULT_TOOLS = [
     {
         "type": "function",
         "function": {
-            "name": "get_courses",
-            "description": "Tìm kiếm các khoá học tại Trung tâm tin học, Đại học KHoa học Tự nhiên, Đại học Quốc gia TPHCM.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "instructions": {
-                        "type": "string",
-                        "description": "Chỉ dẫn cụ thể về các khoá học cần trích xuất.",
-                    },
-                },
-                "required": ["instructions"],
-            },
-        }
-    },
-    {
-        "type": "function",
-        "function": {
             "name": "get_current_date",
             "description": "Lấy ngày hiện tại",
-            "parameters": {},
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
         }
     }
 ]
