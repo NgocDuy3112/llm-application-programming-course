@@ -34,7 +34,7 @@ class FullChatbotEngine:
         max_tokens: int = 65536,
         safety_enabled: bool = True,
         **kwargs
-    ) -> tuple[str, str]:
+    ) -> str:
         global_logger.info(f"Processing user input: {input[:50]}...")
         system_message = {"role": "system", "content": instruction if instruction else ""}
         tools = tools if tool_choice != ToolChoice.NONE else None
@@ -60,7 +60,7 @@ class FullChatbotEngine:
                 if self.memory is not None:
                     self.memory.add(role="user", content=original_input)
                     self.memory.add(role="assistant", content=f"Yêu cầu bị chặn bởi bộ lọc an toàn: {reason}")
-                return "", f"Yêu cầu bị chặn bởi bộ lọc an toàn: {reason}"
+                return f"Yêu cầu bị chặn bởi bộ lọc an toàn: {reason}"
             
             # Check for PII in user input
             try:
@@ -134,7 +134,7 @@ class FullChatbotEngine:
                 thinking = getattr(last_message, "reasoning_content", None) or ""
                 text = last_message.content or ""
                 global_logger.debug(f"Response complete – thinking: {len(thinking)} chars, text: {len(text)} chars")
-                return thinking, text
+                return text
 
             global_logger.debug(f"Tool calls detected: {[tc.function.name for tc in last_message.tool_calls]}")
             if self.memory is not None:

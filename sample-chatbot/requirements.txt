@@ -5,3 +5,18 @@ tavily-python
 pydantic
 pydantic-settings
 PyYAML
+
+# RAG dependencies
+chromadb
+sentence-transformers
+langchain-text-splitters
+pypdf
+python-docx
+markitdown
+
+# RAGAS evaluation
+ragas
+datasets
+langchain-openai
+langchain-community
+langchain-huggingface

@@ -1,17 +1,14 @@
 .DS_Store
 .env
-.github/
 .claude/
+.github/
 .vscode/
 .cursor/
 secrets/
 data/
-chromadb/
-logs/
-llms/
-
-*.pptx
 *.docx
+*.pptx
+*.xlsx
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -229,3 +226,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+sample-chatbot-openRag
+
+chroma_db/
