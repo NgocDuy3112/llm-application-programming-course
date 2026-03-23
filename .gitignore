@@ -226,3 +226,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+sample-chatbot-openRag
+
+chroma_db/
