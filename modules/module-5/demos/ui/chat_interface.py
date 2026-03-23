@@ -52,12 +52,12 @@ def render_chat_interface(engine: object):
     
     Args:
         engine: ChatbotEngine hoặc FakeChatbotEngine
-               Phải có method response(model, input, temperature, max_output_tokens)
+               Phải có method response(model, input, temperature, max_tokens)
     
     Session State được sử dụng:
     - chat_history: List[Dict] - Lịch sử tin nhắn
     - temperature: float - Từ sidebar
-    - max_output_tokens: int - Từ sidebar
+    - max_tokens: int - Từ sidebar
     
     Error Handling:
     - Bắt tất cả exceptions và hiển thị thông báo lỗi
@@ -114,7 +114,7 @@ def render_chat_interface(engine: object):
                         model="openai/gpt-oss-20b", 
                         input=user_input,
                         temperature=st.session_state.temperature,
-                        max_output_tokens=st.session_state.max_output_tokens,
+                        max_tokens=st.session_state.max_tokens,
                     )
                     
                     # Hiển thị phản hồi

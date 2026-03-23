@@ -15,7 +15,7 @@ class GroqCloudAdapter:
         model: str, 
         input: str, 
         temperature: float,
-        max_output_tokens: int,
+        max_tokens: int,
         **kwargs
     ):
         # TODO 2: Định dạng input thành messages list theo format OpenAI API

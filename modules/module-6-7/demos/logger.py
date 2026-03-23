@@ -27,7 +27,7 @@ class ChatbotLogger:
         self.name = name
         self.level = level
         self.log_dir = Path(log_dir)
-        self._logger: logging.global_logger | None = None
+        self._logger: logging.Logger | None = None
         self._setup()
     
     def _setup(self) -> None:
