@@ -36,7 +36,7 @@ def render_chat_interface(engine: object):
 
         # Send cleaned input (without <think> blocks) to the model
         with st.spinner("Đang suy nghĩ..."):
-            thinking_from_model, assistant_reply = engine.response(
+            assistant_reply = engine.response(
                 model=st.session_state.selected_model,
                 input=cleaned_input,
                 temperature=st.session_state.temperature,
@@ -44,38 +44,19 @@ def render_chat_interface(engine: object):
                 tool_choice=ToolChoice.AUTO if st.session_state.enable_tools else ToolChoice.NONE,
                 max_tokens=st.session_state.max_tokens,
                 instruction=st.session_state.instruction,
-                safety_enabled=st.session_state.get("enable_safety_filter", True),
-                streaming_output=st.session_state.get("streaming_output", False),
             )
 
-        # If the assistant reply itself contains <think> tags, extract them and remove from visible text
-        reply_think_matches = re.findall(r"<think>(.*?)</think>", assistant_reply, flags=re.DOTALL | re.IGNORECASE)
-        reply_thinking = "\n\n".join(m.strip() for m in reply_think_matches).strip() if reply_think_matches else ""
+        # Remove any <think> blocks from the assistant's reply before displaying in UI, but keep them in memory if needed
         assistant_reply_clean = re.sub(r"<think>.*?</think>", "", assistant_reply, flags=re.DOTALL | re.IGNORECASE).strip()
 
-        # Combine user-provided thinking, model reasoning (from response()), and any reply <think> into a single reasoning block
-        reasoning_parts: list[str] = []
-        if user_thinking:
-            reasoning_parts.append(user_thinking)
-        if thinking_from_model:
-            reasoning_parts.append(thinking_from_model)
-        if reply_thinking:
-            reasoning_parts.append(reply_thinking)
-        combined_thinking = "\n\n".join(reasoning_parts).strip()
+        # Combine model reasoning (from response()) and any reply <think> into a single reasoning block
 
         global_logger.debug(f"Assistant reply generated, length: {len(assistant_reply_clean)}")
-        with st.chat_message("assistant"):
-            # Show reasoning (suy luận) above the visible assistant reply
-            if combined_thinking:
-                with st.expander("💭 SUY LUẬN", expanded=False):
-                    st.markdown(combined_thinking)
-            st.markdown(assistant_reply_clean)
 
         # Only append to UI chat_history, engine.memory handles its own buffer
         st.session_state.chat_history.append({
             "role": "assistant", 
-            "content": assistant_reply_clean, 
-            "thinking": combined_thinking
+            "content": assistant_reply_clean,
         })
         global_logger.debug(f"Updated chat history, total messages: {len(st.session_state.chat_history)}")
         st.rerun()

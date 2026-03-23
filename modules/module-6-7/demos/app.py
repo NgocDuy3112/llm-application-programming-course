@@ -52,11 +52,11 @@ def get_chatbot_engine(provider: Provider) -> FullChatbotEngine:
 
 
 def main():
+    st.set_page_config(layout="wide")
     if "selected_provider" not in st.session_state:
         st.session_state.selected_provider = Provider.GROQ.value
     if "selected_model" not in st.session_state:
         st.session_state.selected_model = "openai/gpt-oss-20b"
-    # Pass provider as parameter so cache is invalidated when it changes
     engine = get_chatbot_engine(Provider(st.session_state.selected_provider))
     render_sidebar()
     render_chat_interface(engine=engine)

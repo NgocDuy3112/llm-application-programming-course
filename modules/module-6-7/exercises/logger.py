@@ -13,7 +13,7 @@ class ChatbotLogger:
     def __init__(
         self, 
         name: str = "chatbot",
-        level: int = logging.INFO,
+        level: int = logging.DEBUG,
         log_dir: str = "logs"
     ):
         """

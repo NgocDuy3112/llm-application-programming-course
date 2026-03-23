@@ -100,24 +100,6 @@ def render_sidebar():
         help="Bật nếu bạn muốn cho phép chatbot sử dụng các công cụ đã tích hợp (ví dụ: truy vấn cơ sở dữ liệu, gọi API, v.v.) để trả lời câu hỏi của người dùng. Nếu tắt, chatbot sẽ chỉ dựa vào kiến thức đã được huấn luyện mà không sử dụng công cụ bên ngoài nào.",
         on_change=on_enable_tools_change,
     )
-    # Safety filter toggle
-    if "enable_safety_filter" not in st.session_state:
-        st.session_state.enable_safety_filter = False
-    st.sidebar.toggle(
-        label="Bộ lọc an toàn",
-        value=st.session_state.enable_safety_filter,
-        key="enable_safety_filter",
-        help="Bật nếu bạn muốn kích hoạt bộ lọc an toàn để giảm thiểu rủi ro từ các yêu cầu độc hại hoặc để tránh đưa thông tin nhạy cảm cho mô hình",
-    )
-    # Streaming output toggle
-    if "streaming_output" not in st.session_state:
-        st.session_state.streaming_output = False
-    st.sidebar.toggle(
-        label="Streaming Output",
-        value=st.session_state.streaming_output,
-        key="streaming_output",
-        help="Hiển thị đầu ra dạng streaming nếu adapter/mô hình hỗ trợ",
-    )
     if st.sidebar.button("Cập nhật cài đặt"):
         global_logger.info(f"Settings updated: Selected provider: {st.session_state.selected_provider}, model: {st.session_state.selected_model}, Temperature: {st.session_state.temperature}, Max tokens: {st.session_state.max_tokens}, Context Management Mode: {ContextManagementMode(st.session_state.context_management_mode)}, Tools enabled: {st.session_state.enable_tools}")
         st.session_state.chat_history = []
