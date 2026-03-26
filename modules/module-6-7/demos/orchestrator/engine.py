@@ -62,26 +62,19 @@ class FullChatbotEngine:
             if self.memory is not None:
                 # Sanitize memory messages before sending to the API — only role and content allowed
                 raw_messages = self.memory.get_messages()
-                sanitized = []
-                for message in raw_messages:
-                    # message expected to be a dict-like object with 'role' and 'content'
-                    if isinstance(message, dict):
-                        role = message.get("role")
-                        content = message.get("content", "")
-                        # Preserve required fields for tool messages (tool_call_id)
-                        if role == "tool":
-                            tool_call_id = message.get("tool_call_id")
-                            name = message.get("name")
-                            msg = {"role": "tool", "content": content}
-                            if tool_call_id is not None:
-                                msg["tool_call_id"] = tool_call_id
-                            if name is not None:
-                                msg["name"] = name
-                        else:
-                            msg = {"role": role, "content": content}
-                    else:
-                        msg = {"role": None, "content": str(message)}
-                    sanitized.append(msg)
+
+                # Simplified sanitization: repo invariant là raw_messages đều là dict
+                # Chỉ giữ các trường cần thiết (role, content) và optional tool fields
+                def _sanitize_dict(message: dict) -> dict:
+                    role = message.get("role")
+                    content = message.get("content") or ""
+                    msg = {"role": role, "content": content}
+                    if role == "tool":
+                        msg["tool_call_id"] = message["tool_call_id"]
+                        msg["name"] = message["name"]
+                    return msg
+
+                sanitized = [_sanitize_dict(message) for message in raw_messages]
                 messages = [system_message] + sanitized
                 # Replace the last user message content with masked version for LLM
                 if messages and messages[-1].get("role") == "user":

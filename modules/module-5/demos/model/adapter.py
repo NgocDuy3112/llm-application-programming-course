@@ -16,25 +16,25 @@ Lợi ích của Adapter Pattern:
 """
 
 # =============================================================================
-# IMPORTS
+# IMPORTS - KHAI BÁO THƯ VIỆN
 # =============================================================================
-from openai import OpenAI
+from openai import OpenAI  # Import OpenAI client từ thư viện openai
 
 
 # =============================================================================
-# CLASS DEFINITION
+# CLASS DEFINITION - ĐỊNH NGHĨA LỚP
 # =============================================================================
 class GroqCloudAdapter:
     """
     Adapter để kết nối với Groq Cloud API.
-    
+
     Groq cung cấp API tương thích với OpenAI SDK, nên chúng ta có thể sử dụng
     OpenAI client với base_url của Groq.
-    
+
     Attributes:
         api_key (str | None): API key để xác thực với Groq
         client (OpenAI): OpenAI client được cấu hình để kết nối với Groq
-    
+
     Example:
         >>> adapter = GroqCloudAdapter(api_key="gsk_xxx")
         >>> response = adapter.response(
@@ -44,54 +44,61 @@ class GroqCloudAdapter:
         ...     max_tokens=1024
         ... )
     """
-    
+
     def __init__(self, api_key: str | None):
         """
         Khởi tạo GroqCloudAdapter với API key.
-        
+
         Args:
             api_key: API key từ Groq (bắt đầu với "gsk_")
                     Có thể None nếu muốn xử lý lỗi sau
-        
+
         Raises:
             ValueError: Nếu api_key là None khi gọi __initialize_client
         """
+        # Gán api_key truyền vào cho thuộc tính của instance
         self.api_key = api_key
+        # Khởi tạo client bằng cách gọi method private __initialize_client
         self.client = self.__initialize_client()
 
     def __initialize_client(self) -> OpenAI:
         """
         Khởi tạo OpenAI client với cấu hình cho Groq.
-        
+
         Returns:
             OpenAI: Client đã được cấu hình để kết nối với Groq API
-        
+
         Raises:
             ValueError: Nếu api_key là None
-        
+
         Lưu ý:
         - base_url="https://api.groq.com/openai/v1" là endpoint của Groq
         - Groq sử dụng cùng format API với OpenAI nên có thể dùng SDK này
         """
+        # Kiểm tra nếu api_key có giá trị (không None, không rỗng)
         if self.api_key:
+            # Tạo và trả về OpenAI client với cấu hình cho Groq
+            # base_url: endpoint của Groq API (tương thích OpenAI)
+            # api_key: key xác thực để gọi API
             return OpenAI(
-                base_url="https://api.groq.com/openai/v1", 
+                base_url="https://api.groq.com/openai/v1",
                 api_key=self.api_key
             )
         else:
+            # Ném lỗi nếu không có API key
             raise ValueError("API key is required to initialize the OpenAI client.")
 
     def response(
-        self, 
-        model: str, 
-        messages: list, 
+        self,
+        model: str,
+        messages: list,
         temperature: float,
         max_tokens: int,
         **kwargs
     ) -> object:
         """
         Gọi API để tạo phản hồi cho tin nhắn.
-        
+
         Args:
             model: Tên model sử dụng (VD: "openai/gpt-oss-20b", "llama3-8b-8192")
             messages: Danh sách tin nhắn theo format OpenAI
@@ -100,11 +107,11 @@ class GroqCloudAdapter:
                         0.0 = xác định nhất, 1.0 = sáng tạo nhất
             max_tokens: Số token tối đa trong phản hồi
             **kwargs: Các tham số bổ sung (top_p, stream, etc.)
-        
+
         Returns:
             object: Response object từ OpenAI API
                    Thường có structure: response.choices[0].message.content
-        
+
         Example:
             >>> response = adapter.response(
             ...     model="openai/gpt-oss-20b",
@@ -114,9 +121,17 @@ class GroqCloudAdapter:
             ... )
             >>> print(response.choices[0].message.content)
         """
+        # Gọi API chat completions của OpenAI client
+        # Đây là method chính để tạo phản hồi từ model
+        # Các tham số:
+        # - model: tên model sẽ sử dụng
+        # - messages: danh sách tin nhắn trong hội thoại
+        # - temperature: độ sáng tạo của phản hồi
+        # - max_tokens: giới hạn số token trong phản hồi
+        # - **kwargs: các tham số khác truyền thẳng vào API
         return self.client.chat.completions.create(
-            model=model, 
-            messages=messages, 
+            model=model,
+            messages=messages,
             temperature=temperature,
             max_tokens=max_tokens,
             **kwargs

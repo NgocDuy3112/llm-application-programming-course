@@ -1,167 +1,305 @@
+# Khai báo module docstring - mô tả chức năng của module sidebar này
+"""
+UI - Sidebar Module
+
+Mô tả: Xử lý giao diện sidebar của ứng dụng Streamlit, bao gồm:
+- Cài đặt provider và model
+- Điều chỉnh temperature, max tokens, system instruction
+- Cấu hình chế độ quản lý ngữ cảnh (context management)
+- Bật/tắt công cụ (tools)
+- Quản lý Knowledge Base (RAG): upload, xem, xóa tài liệu
+
+Kiến trúc / Dependencies:
+- streamlit: Framework cho giao diện web
+- logger: Global logger để tracking
+- custom_types: Provider và ContextManagementMode enums
+"""
+
+# Import streamlit - thư viện framework để xây dựng giao diện web app
 import streamlit as st
+# Import global_logger từ logger module để ghi log hoạt động
 from logger import global_logger
+# Import Provider enum (GROQ, OLLAMA) và ContextManagementMode enum từ custom_types
 from custom_types import Provider, ContextManagementMode
 
 
+# Dictionary khai báo danh sách các model có sẵn cho từng provider
+# Key: tên provider (string), Value: list các model names
 MODELS_BY_PROVIDER = {
+    # Danh sách models cho provider GROQ
     Provider.GROQ.value: [
-        "openai/gpt-oss-20b", 
+        "openai/gpt-oss-20b",
         "moonshotai/kimi-k2-instruct-0905",
         "qwen/qwen3-32b",
         "llama-3.3-70b-versatile"
     ],
+    # Danh sách models cho provider OLLAMA (local models)
     Provider.OLLAMA.value: [
-        "qwen3:0.6b", 
+        "qwen3:0.6b",
         "qwen3.5:0.8b"
     ],
 }
 
 
-
+# Hàm render_sidebar - hàm chính của module, hiển thị toàn bộ sidebar
 def render_sidebar():
+    """
+    Render sidebar với các cài đặt chatbot.
+
+    Các thành phần trong sidebar:
+    1. Chọn provider (Groq/Ollama)
+    2. Chọn model từ danh sách models của provider
+    3. Slider điều chỉnh temperature (độ sáng tạo)
+    4. Input số lượng max tokens (độ dài phản hồi)
+    5. Text area cho system instruction
+    6. Radio button chọn chế độ quản lý ngữ cảnh
+    7. Toggle bật/tắt tools
+    8. Knowledge Base section: upload, xem, xóa tài liệu
+    """
+    # Ghi log debug: bắt đầu render sidebar
     global_logger.debug("Rendering sidebar")
+    
+    # Kiểm tra nếu 'selected_provider' chưa tồn tại trong session_state
+    # session_state là nơi lưu trữ trạng thái giữa các lần rerun của Streamlit
     if "selected_provider" not in st.session_state:
+        # Khởi tạo giá trị mặc định là GROQ
         st.session_state.selected_provider = Provider.GROQ.value
+    
+    # Kiểm tra nếu 'selected_model' chưa tồn tại trong session_state
     if "selected_model" not in st.session_state:
+        # Khởi tạo model mặc định là "openai/gpt-oss-20b"
         st.session_state.selected_model = "openai/gpt-oss-20b"
+    
+    # Tạo tiêu đề cho sidebar với text "Cài đặt Chatbot"
     st.sidebar.title("Cài đặt Chatbot")
+    
+    # Tạo dropdown (selectbox) để người dùng chọn provider
     st.sidebar.selectbox(
+        # Label hiển thị phía trên dropdown
         label="Chọn nhà cung cấp mô hình",
+        # Danh sách các options: GROQ và OLLAMA
         options=[
             Provider.GROQ.value,
             Provider.OLLAMA.value
         ],
+        # Index được chọn mặc định (0 = option đầu tiên)
         index=0,
+        # Key để lưu giá trị vào session_state
         key="selected_provider"
     )
-    
+
+    # Lấy danh sách models tương ứng với provider đã chọn
+    # Nếu provider không có trong dictionary, trả về list rỗng []
     available_models = MODELS_BY_PROVIDER.get(st.session_state.selected_provider, [])
+    
+    # Tạo dropdown để chọn model, danh sách này phụ thuộc vào provider đã chọn
     st.sidebar.selectbox(
         label="Chọn mô hình",
-        options=available_models,
-        index=0,
-        key="selected_model"
+        options=available_models,  # Danh sách models động theo provider
+        index=0,  # Chọn model đầu tiên làm mặc định
+        key="selected_model"  # Lưu vào session_state["selected_model"]
     )
+    
+    # Tạo slider để điều chỉnh temperature (độ sáng tạo của model)
     st.sidebar.slider(
         label="Độ sáng tạo (Temperature)",
-        min_value=0.0,
-        max_value=1.0,
-        value=0.25,
-        step=0.05,
-        key="temperature"
+        min_value=0.0,  # Giá trị nhỏ nhất: 0.0 (hoàn toàn deterministic)
+        max_value=1.0,  # Giá trị lớn nhất: 1.0 (rất sáng tạo/ngẫu nhiên)
+        value=0.25,     # Giá trị mặc định
+        step=0.05,      # Bước nhảy khi kéo slider
+        key="temperature"  # Lưu vào session_state["temperature"]
     )
+    
+    # Tạo input số để chọn số tokens tối đa cho phản hồi
     st.sidebar.number_input(
         label="Độ dài tối đa của phản hồi (Max Output Tokens)",
-        min_value=2048,
-        max_value=131072,
-        value=16384,
-        step=256,
-        key="max_tokens"
+        min_value=2048,    # Giá trị nhỏ nhất: 2048 tokens
+        max_value=131072,  # Giá trị lớn nhất: 131072 tokens
+        value=16384,       # Giá trị mặc định
+        step=256,          # Bước nhảy khi tăng/giảm
+        key="max_tokens"   # Lưu vào session_state["max_tokens"]
     )
+    
+    # Tạo text area để nhập system instruction (hướng dẫn cho AI)
     st.sidebar.text_area(
         label="Câu lệnh hệ thống (System Instruction)",
-        height=200,
-        placeholder="Bạn là một trợ lý hữu ích và thân thiện.",
-        key="instruction"
+        height=200,  # Chiều cao của text area (pixels)
+        placeholder="Bạn là một trợ lý hữu ích và thân thiện.",  # Text gợi ý
+        key="instruction"  # Lưu vào session_state["instruction"]
     )
+    
+    # Tạo radio button để chọn chế độ quản lý ngữ cảnh (context management)
     st.sidebar.radio(
         label="Chọn chế độ quản lý ngữ cảnh",
         options=[
-            ContextManagementMode.OFF.value,
-            ContextManagementMode.SLIDING_WINDOW.value,
+            ContextManagementMode.OFF.value,  # Tắt quản lý ngữ cảnh
+            ContextManagementMode.SLIDING_WINDOW.value,  # Dùng sliding window
         ],
-        index=0,
-        key="context_management_mode"
+        index=0,  # Mặc định chọn OFF
+        key="context_management_mode"  # Lưu vào session_state
     )
-    # If sliding window selected, allow user to choose number of turns (pairs) to keep
+    
+    # Kiểm tra nếu chế độ SLIDING_WINDOW được chọn
+    # Sliding window: chỉ giữ lại N cặp user-assistant gần nhất
     if st.session_state.get("context_management_mode", ContextManagementMode.OFF.value) == ContextManagementMode.SLIDING_WINDOW.value:
+        # Kiểm tra nếu biến sliding_window_turns chưa tồn tại trong session_state
         if "sliding_window_turns" not in st.session_state:
+            # Khởi tạo mặc định là 5 turns (5 cặp user-assistant)
             st.session_state.sliding_window_turns = 5
+        
+        # Tạo input số để chọn số turns (cặp messages) được giữ lại
         st.sidebar.number_input(
             label="Số turn (sliding window)",
-            min_value=1,
-            max_value=50,
-            value=st.session_state.sliding_window_turns,
-            step=1,
-            key="sliding_window_turns",
+            min_value=1,   # Tối thiểu 1 turn
+            max_value=50,  # Tối đa 50 turns
+            value=st.session_state.sliding_window_turns,  # Giá trị hiện tại
+            step=1,  # Bước nhảy là 1
+            key="sliding_window_turns",  # Lưu vào session_state
+            # Tooltip hiển thị khi hover
             help="Số cặp user-assistant được giữ lại trong sliding window",
         )
+
+    # Hàm callback được gọi khi toggle "enable_tools" thay đổi giá trị
     def on_enable_tools_change():
+        """Callback khi bật tools: tự động chuyển sang sliding window mode để quản lý context."""
+        # Nếu tools được bật, tự động chuyển sang chế độ sliding window
         if st.session_state.enable_tools:
             st.session_state.context_management_mode = ContextManagementMode.SLIDING_WINDOW.value
+
+    # Tạo toggle (nút bật/tắt) để cho phép sử dụng tools
     st.sidebar.toggle(
         label="Cho phép sử dụng công cụ",
-        value=False,
-        key="enable_tools",
+        value=False,  # Mặc định là tắt (False)
+        key="enable_tools",  # Lưu vào session_state["enable_tools"]
+        # Callback function được gọi khi giá trị thay đổi
         on_change=on_enable_tools_change,
     )
 
     # ================================================================
     # KNOWLEDGE BASE (RAG) SECTION
     # ================================================================
+    # Knowledge Base: nơi lưu trữ tài liệu đã upload để RAG có thể tìm kiếm
+    
+    # Tạo đường kẻ ngang phân cách các section trong sidebar
     st.sidebar.divider()
+    
+    # Tạo subheader cho section Knowledge Base với icon 📚
     st.sidebar.subheader("📚 Knowledge Base")
 
-    # Hiển thị số lượng chunks hiện có
+    # Lấy RAG instance từ session_state (đã được khởi tạo trong app.py)
     rag = st.session_state.get("rag")
-    if rag:
-        chunk_count = rag.doc_count()
-        if chunk_count > 0:
-            st.sidebar.info(f"📄 {chunk_count} chunks trong Knowledge Base")
-        else:
-            st.sidebar.caption("Knowledge base đang trống")
     
-    # Upload file
+    # Kiểm tra nếu rag tồn tại (không phải None)
+    if rag:
+        # Gọi method doc_count() để lấy số lượng chunks trong knowledge base
+        chunk_count = rag.doc_count()
+
+        # Nếu có chunks (> 0), hiển thị thông tin số lượng (dùng .format thay f-string)
+        if chunk_count > 0:
+            st.sidebar.info("📄 {} chunks trong Knowledge Base".format(chunk_count))
+        else:
+            # Nếu không có chunks, hiển thị message "đang trống"
+            st.sidebar.caption("Knowledge base đang trống")
+
+    # Tạo file uploader cho phép người dùng upload nhiều file cùng lúc
     uploaded_files = st.sidebar.file_uploader(
         label="Upload tài liệu",
+        # Các loại file được chấp nhận
         type=["txt", "md", "pdf", "docx", "pptx", "xlsx", "html"],
-        accept_multiple_files=True,
+        accept_multiple_files=True,  # Cho phép chọn nhiều file
+        # Tooltip hướng dẫn
         help="Hỗ trợ: TXT, MD, PDF, DOCX, PPTX, XLSX, HTML",
-        key="rag_file_uploader",
+        key="rag_file_uploader",  # Key cho session_state
     )
 
-    # Nút thêm tài liệu
+    # Tạo button để thêm tài liệu vào knowledge base
     if st.sidebar.button("📥 Thêm tài liệu vào KB", use_container_width=True):
+        # Kiểm tra nếu không có file nào được chọn
         if not uploaded_files:
             st.sidebar.warning("Vui lòng chọn file trước!")
+        # Kiểm tra nếu RAG instance chưa được khởi tạo
         elif not rag:
             st.sidebar.error("RAG chưa được khởi tạo!")
+        # Nếu mọi thứ đã sẵn sàng, tiến hành xử lý
         else:
             try:
+                # Hiển thị spinner trong khi đang xử lý
                 with st.spinner("Đang xử lý tài liệu..."):
+                    # Gọi method add_documents() để xử lý và thêm files vào RAG
+                    # Phương thức này trả về số chunks đã thêm
                     num_chunks = rag.add_documents(uploaded_files)
-                st.sidebar.success(f"✅ Đã thêm {num_chunks} chunks!")
-                global_logger.info(f"Added {num_chunks} chunks to knowledge base")
+
+                # Hiển thị message thành công với số chunks đã thêm
+                st.sidebar.success("✅ Đã thêm {} chunks!".format(num_chunks))
+                # Ghi log thông tin
+                global_logger.info("Added {} chunks to knowledge base".format(num_chunks))
             except Exception as e:
-                st.sidebar.error(f"❌ Lỗi: {str(e)}")
-                global_logger.error(f"Error adding documents: {str(e)}")
+                # Hiển thị lỗi cho người dùng (dùng .format)
+                st.sidebar.error("❌ Lỗi: {}".format(str(e)))
+                # Ghi log lỗi
+                global_logger.error("Error adding documents: {}".format(str(e)))
 
     # Danh sách file + xóa riêng lẻ
+    # Hiển thị tất cả nguồn tài liệu đã upload và cho phép xóa từng file
+    
+    # Kiểm tra nếu rag tồn tại và có ít nhất 1 chunk
     if rag and rag.doc_count() > 0:
+        # Gọi method list_sources() để lấy danh sách các file đã upload
+        # Trả về list của dict: [{"source": "file.pdf", "chunk_count": 10}, ...]
         sources = rag.list_sources()
+        
+        # Kiểm tra nếu có sources
         if sources:
-            with st.sidebar.expander(f"📁 Tài liệu ({len(sources)} file)", expanded=False):
+            # Tạo expander (collapsible section) để hiển thị danh sách files
+            # Hiển thị expander danh sách files đã upload
+            with st.sidebar.expander("📁 Tài liệu ({}) file".format(len(sources)), expanded=False):
+                # Lặp qua từng item trong danh sách sources
                 for item in sources:
+                    # Tạo 2 columns với tỉ lệ 3:1 (cột 1 rộng hơn cột 2)
                     col1, col2 = st.columns([3, 1])
+                    
+                    # Cột 1: Hiển thị thông tin file
                     with col1:
-                        st.caption(f"📄 {item['source']} ({item['chunk_count']} chunks)")
+                        # Hiển thị tên file và số chunk (dùng .format)
+                        st.caption("📄 {} ({} chunks)".format(item.get('source', ''), item.get('chunk_count', 0)))
+                    
+                    # Cột 2: Nút xóa file
                     with col2:
-                        if st.button("🗑️", key=f"del_{item['source']}", help=f"Xóa {item['source']}"):
-                            deleted = rag.delete_source(item["source"])
-                            st.success(f"✅ Đã xóa {deleted} chunks!")
-                            global_logger.info(f"Deleted source: {item['source']} ({deleted} chunks)")
+                        # Tạo button xóa với icon 🗑️; key và help không dùng f-string
+                        key_name = "del_{}".format(item.get('source', ''))
+                        help_text = "Xóa {}".format(item.get('source', ''))
+                        if st.button("🗑️", key=key_name, help=help_text):
+                            # Xóa file khỏi knowledge base
+                            deleted = rag.delete_source(item.get("source"))
+                            # Hiển thị message thành công
+                            st.success("✅ Đã xóa {} chunks!".format(deleted))
+                            # Ghi log
+                            global_logger.info("Deleted source: {} ({} chunks)".format(item.get('source'), deleted))
+                            # Rerun app để cập nhật UI
                             st.rerun()
 
-        # Nút xóa toàn bộ
-        if st.sidebar.button("🗑️ Xóa toàn bộ Knowledge Base", use_container_width=True):
+        # Nút xóa toàn bộ: xóa tất cả chunks khỏi knowledge base
+    if st.sidebar.button("🗑️ Xóa toàn bộ Knowledge Base", use_container_width=True):
+            # Gọi method clear() để xóa toàn bộ knowledge base
             rag.clear()
+            # Hiển thị message thành công
             st.sidebar.success("✅ Đã xóa toàn bộ Knowledge Base!")
+            # Ghi log
             global_logger.info("Knowledge base cleared by user")
+            # Rerun app để cập nhật UI
             st.rerun()
 
+    # Tạo đường kẻ ngang phân cách
     st.sidebar.divider()
 
+    # Tạo button "Cập nhật cài đặt"
     if st.sidebar.button("Cập nhật cài đặt"):
-        global_logger.info(f"Settings updated: Selected provider: {st.session_state.selected_provider}, model: {st.session_state.selected_model}, Temperature: {st.session_state.temperature}, Max tokens: {st.session_state.max_tokens}, Context Management Mode: {ContextManagementMode(st.session_state.context_management_mode)}, Tools enabled: {st.session_state.enable_tools}")
+        # Nút cập nhật: log cấu hình mới và xóa lịch sử chat để áp dụng cài đặt
+        settings_msg = ("Settings updated: Selected provider: {}, model: {}, Temperature: {}, Max tokens: {}, Context Management Mode: {}, Tools enabled: {}"
+                        .format(st.session_state.get('selected_provider'), st.session_state.get('selected_model'), st.session_state.get('temperature'), st.session_state.get('max_tokens'), str(ContextManagementMode(st.session_state.get('context_management_mode'))), st.session_state.get('enable_tools')))
+        # Ghi log cấu hình
+        global_logger.info(settings_msg)
+        # Xóa lịch sử chat để áp dụng cài đặt mới
         st.session_state.chat_history = []
+        # Hiển thị message thành công
         st.sidebar.success("Đã cập nhật cấu hình! Lịch sử chat đã được xóa.")
