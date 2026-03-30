@@ -1,5 +1,5 @@
 """
-Module 6-7 - Chatbot Engine
+Module 6-7 - Chatbot Engine (Solution)
 
 Mô tả: FullChatbotEngine - orchestration layer quản lý luồng hội thoại,
 bao gồm:
@@ -75,7 +75,6 @@ class FullChatbotEngine:
         self.adapter = adapter
         self.memory = memory
 
-
     def response(
         self,
         model: str,
@@ -115,27 +114,18 @@ class FullChatbotEngine:
         global_logger.info(f"Processing user input: {input[:50]}...")
         system_message = {"role": "system", "content": instruction if instruction else ""}
         tools = tools if tool_choice != ToolChoice.NONE else None
-        # Optional flag to control streaming-style output in adapters
         streaming_output = kwargs.pop("streaming_output", False)
         global_logger.debug(f"streaming_output={streaming_output}")
 
+        llm_input = input
 
-        llm_input = input  # This may be masked version sent to LLM
-
-        # Add user message once, before the tool-calling loop
-        # Note: Memory stores original input for auditing
         if self.memory is not None:
             self.memory.add(role="user", content=input)
 
-        # Main tool-calling loop: keep executing until no more tool calls
         while True:
-            # Build messages list for LLM API
             if self.memory is not None:
-                # Sanitize memory messages before sending to the API — only role and content allowed
                 raw_messages = self.memory.get_messages()
 
-                # Simplified sanitization: repo invariant là raw_messages đều là dict
-                # Chỉ giữ các trường cần thiết (role, content) và optional tool fields
                 def _sanitize_dict(message: dict) -> dict:
                     role = message.get("role")
                     content = message.get("content") or ""
@@ -147,15 +137,12 @@ class FullChatbotEngine:
 
                 sanitized = [_sanitize_dict(message) for message in raw_messages]
                 messages = [system_message] + sanitized
-                # Replace the last user message content with masked version for LLM
                 if messages and messages[-1].get("role") == "user":
                     messages[-1] = {"role": "user", "content": llm_input}
             else:
-                # No memory mode: just system + current user message
                 user_message = {"role": "user", "content": llm_input}
                 messages = [system_message, user_message]
 
-            # Call LLM via adapter
             response = self.adapter.response(
                 model=model,
                 messages=messages,
@@ -167,34 +154,27 @@ class FullChatbotEngine:
             )
             last_message = response.choices[0].message
 
-            # Check if LLM wants to call any tools
             if not last_message.tool_calls:
                 global_logger.debug(f"No tool calls, returning assistant response")
                 if self.memory is not None:
                     self.memory.add(role="assistant", content=last_message.content)
-                # Extract reasoning content (for reasoning models) and response text
                 thinking = getattr(last_message, "reasoning_content", None) or ""
                 text = last_message.content or ""
                 global_logger.debug(f"Response complete - thinking: {len(thinking)} chars, text: {len(text)} chars")
                 return text
 
-            # LLM requested tool calls - execute them
             global_logger.debug(f"Tool calls detected: {[tc.function.name for tc in last_message.tool_calls]}")
             if self.memory is not None:
                 self.memory.add(role="assistant", content=last_message.content, tool_calls=last_message.tool_calls)
 
-            # Execute each tool call
             for tool_call in last_message.tool_calls:
                 tool_name = tool_call.function.name
                 global_logger.debug(f"Executing tool: {tool_name}")
-                # tool_args = tool_call.function.arguments
-                # Parse tool arguments from JSON string
                 try:
                     tool_args = json.loads(tool_call.function.arguments) or {}
                 except:
                     tool_args = {}
 
-                # Look up and execute the tool function
                 if tool_name in AVAILABLE_FUNCTIONS:
                     try:
                         global_logger.debug(f"Calling {tool_name} with args: {tool_args}")
@@ -206,6 +186,5 @@ class FullChatbotEngine:
                     global_logger.warning(f"Unknown tool: {tool_name}")
                     tool_response = f"Unknown tool: {tool_name}"
 
-                # Add tool response to memory for next LLM iteration
                 if self.memory is not None:
                     self.memory.add_tool_message(tool_call, tool_response)
