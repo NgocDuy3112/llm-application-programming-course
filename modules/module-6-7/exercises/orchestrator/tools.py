@@ -22,6 +22,30 @@ Usage:
     date = get_current_date()
 """
 
+"""
+Module 6-7 - Tools (Solution)
+
+Mô tả: Triển khai các tools (function calling) cho chatbot. Tools cho phép
+LLM thực thi các tác vụ bên ngoài như search web, gọi API, query database.
+
+Kiến trúc / Dependencies:
+- TavilyClient: Web search API client
+- AVAILABLE_FUNCTIONS: Registry mapping tool names to function implementations
+- DEFAULT_TOOLS: Tool specifications cho LLM (OpenAI function calling format)
+
+Tool Flow:
+1. LLM nhận tool definitions trong API call
+2. LLM quyết định gọi tool nào dựa trên user input
+3. Engine thực thi tool function với arguments từ LLM
+4. Kết quả được thêm vào memory và gửi lại cho LLM
+5. LLM generate response dựa trên tool output
+
+Usage:
+    from orchestrator.tools import tavily_search, get_current_date
+    result = tavily_search("Python programming")
+    date = get_current_date()
+"""
+
 from tavily import TavilyClient
 from datetime import date
 import os
@@ -29,12 +53,10 @@ from dotenv import load_dotenv
 from logger import global_logger
 
 
-# Load environment variables from .env file
 load_dotenv(dotenv_path=".env", override=True)
 global_logger.debug("Loading environment variables from .env")
 
 
-# Initialize Tavily client if API key is available
 if os.getenv("TAVILY_API_KEY"):
     global_logger.debug("Tavily API key found, initializing TavilyClient")
     tavily_client = TavilyClient(os.getenv("TAVILY_API_KEY"))
@@ -73,13 +95,23 @@ def tavily_search(query: str) -> str:
     if not tavily_client:
         global_logger.error("Tavily client not initialized, API key missing")
         return "Error: Tavily client not initialized"
-
-    # Implementation hint: call `tavily_client.search(...)`, extract `answer`
-    # and `results`, concatenate into a single string and return. Handle
-    # exceptions and return a user-friendly error string if needed.
-    # For exercises this function is left intentionally unimplemented so
-    # students can implement a real call or return a mocked string.
-    pass
+    try:
+        response = tavily_client.search(
+            query=query,
+            include_answer=True,
+            time_range="year",
+        )
+        if response is None:
+            global_logger.warning("Tavily search returned no response")
+            return "No response from Tavily"
+        answer = response.get("answer") or ""
+        for result in response.get("results", []):
+            answer += f"\n\nSource: {result.get('url')}\nTitle: {result.get('title')}"
+        global_logger.debug(f"Web search completed, result length: {len(answer)}")
+        return answer
+    except Exception as e:
+        global_logger.error(f"Error in web_search: {str(e)}")
+        return f"Error: {str(e)}"
 
 
 def get_current_date() -> str:
@@ -102,27 +134,13 @@ def get_current_date() -> str:
     return date_str
 
 
-# Registry of available tool functions
-# Engine sẽ lookup tên tool (string) và gọi hàm tương ứng với kwargs parsed từ model.
-# GỢI Ý: Đăng ký functions theo tên như ví dụ dưới (mapping thực tế được giữ để code chạy):
-# Example (commented):
-# AVAILABLE_FUNCTIONS = {
-#     "get_current_date": get_current_date,
-#     "tavily_search": tavily_search,
-# }
+
 AVAILABLE_FUNCTIONS = {
     "get_current_date": get_current_date,
     "tavily_search": tavily_search,
 }
 
 
-# Tool specifications cho LLM (OpenAI function calling format)
-# GỢI Ý: Mỗi entry phải mô tả name, description và parameters schema.
-# Ví dụ mẫu (uncomment để dùng):
-# {
-#   "type": "function",
-#   "function": {"name": "tavily_search", "description": "...", "parameters": {...}}
-# }
 DEFAULT_TOOLS = [
     {
         "type": "function",
@@ -132,10 +150,13 @@ DEFAULT_TOOLS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "query": {"type": "string", "description": "Câu truy vấn tìm kiếm"}
+                    "query": {
+                        "type": "string",
+                        "description": "Câu truy vấn tìm kiếm trên web.",
+                    },
                 },
-                "required": ["query"]
-            }
+                "required": ["query"],
+            },
         }
     },
     {
@@ -143,7 +164,11 @@ DEFAULT_TOOLS = [
         "function": {
             "name": "get_current_date",
             "description": "Lấy ngày hiện tại",
-            "parameters": {"type": "object", "properties": {}, "required": []}
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
         }
     }
 ]

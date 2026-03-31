@@ -25,11 +25,12 @@ import streamlit as st
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from custom_types import Provider, ContextManagementMode
+from custom_types import Provider, ContextManagementMode, MODELS_BY_PROVIDER
+
 from model.adapter import *
 from orchestrator.tools import *
 from orchestrator.memory import *
-from orchestrator.engine import FullChatbotEngine
+from orchestrator.engine_full import EngineFull
 
 from ui.sidebar import render_sidebar
 from ui.chat_interface import render_chat_interface
@@ -58,7 +59,7 @@ def get_memory(mode: ContextManagementMode):
         case ContextManagementMode.SLIDING_WINDOW.value:
             window_size = st.session_state.get("sliding_window_turns", 5)
             global_logger.debug(f"Memory mode SLIDING_WINDOW with {window_size} turns")
-            return WindowMemory(memory=st.session_state.get("chat_history", []), sliding_window_size=window_size)
+            return SlidingWindowMemory(sliding_window_size=window_size)
         case _:
             global_logger.error(f"Unsupported context management mode: {mode}")
             raise ValueError(f"Chế độ quản lý ngữ cảnh không hợp lệ: {mode}")
@@ -94,7 +95,7 @@ def get_adapter(provider: Provider) -> BaseAdapter:
             raise ValueError(f"Không hỗ trợ nhà cung cấp {provider}")
 
 
-def get_chatbot_engine(provider: Provider) -> FullChatbotEngine:
+def get_chatbot_engine(provider: Provider) -> EngineFull:
     """
     Tạo và trả về chatbot engine với adapter và memory được cấu hình.
 
@@ -102,13 +103,13 @@ def get_chatbot_engine(provider: Provider) -> FullChatbotEngine:
         provider (Provider): Nhà cung cấp LLM để sử dụng
 
     Returns:
-        FullChatbotEngine: Engine đã được cấu hình đầy đủ
+        EngineFull: Engine đã được cấu hình đầy đủ
     """
     global_logger.debug(f"Creating chatbot engine for provider: {provider}")
     adapter = get_adapter(provider)
     memory = get_memory(st.session_state.get("context_management_mode", ContextManagementMode.OFF.value))
     global_logger.info(f"Chatbot engine created with adapter={adapter.__class__.__name__}, memory={memory.__class__.__name__ if memory else 'None'}")
-    return FullChatbotEngine(adapter=adapter, memory=memory)
+    return EngineFull(adapter=adapter, memory=memory)
 
 
 def main():
@@ -126,7 +127,7 @@ def main():
     if "selected_provider" not in st.session_state:
         st.session_state.selected_provider = Provider.GROQ.value
     if "selected_model" not in st.session_state:
-        st.session_state.selected_model = "openai/gpt-oss-20b"
+        st.session_state.selected_model = MODELS_BY_PROVIDER[Provider.GROQ.value][0]
 
     engine = get_chatbot_engine(Provider(st.session_state.selected_provider))
 

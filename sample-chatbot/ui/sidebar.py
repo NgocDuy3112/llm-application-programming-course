@@ -4,7 +4,7 @@ UI - Sidebar Module
 
 Mô tả: Xử lý giao diện sidebar của ứng dụng Streamlit, bao gồm:
 - Cài đặt provider và model
-- Điều chỉnh temperature, max tokens, system instruction
+- Điều chỉnh temperature, max tokens, system system_prompt
 - Cấu hình chế độ quản lý ngữ cảnh (context management)
 - Bật/tắt công cụ (tools)
 - Quản lý Knowledge Base (RAG): upload, xem, xóa tài liệu
@@ -51,7 +51,7 @@ def render_sidebar():
     2. Chọn model từ danh sách models của provider
     3. Slider điều chỉnh temperature (độ sáng tạo)
     4. Input số lượng max tokens (độ dài phản hồi)
-    5. Text area cho system instruction
+    5. Text area cho system system_prompt
     6. Radio button chọn chế độ quản lý ngữ cảnh
     7. Toggle bật/tắt tools
     8. Knowledge Base section: upload, xem, xóa tài liệu
@@ -120,12 +120,12 @@ def render_sidebar():
         key="max_tokens"   # Lưu vào session_state["max_tokens"]
     )
     
-    # Tạo text area để nhập system instruction (hướng dẫn cho AI)
+    # Tạo text area để nhập system_prompt (hướng dẫn cho AI)
     st.sidebar.text_area(
-        label="Câu lệnh hệ thống (System Instruction)",
+        label="Câu lệnh hệ thống (System prompt)",
         height=200,  # Chiều cao của text area (pixels)
         placeholder="Bạn là một trợ lý hữu ích và thân thiện.",  # Text gợi ý
-        key="instruction"  # Lưu vào session_state["instruction"]
+        key="system_prompt"  # Lưu vào session_state["system_prompt"]
     )
     
     # Tạo radio button để chọn chế độ quản lý ngữ cảnh (context management)
@@ -135,7 +135,7 @@ def render_sidebar():
             ContextManagementMode.OFF.value,  # Tắt quản lý ngữ cảnh
             ContextManagementMode.SLIDING_WINDOW.value,  # Dùng sliding window
         ],
-        index=0,  # Mặc định chọn OFF
+        index=1,  # Mặc định chọn SLIDING_WINDOW
         key="context_management_mode"  # Lưu vào session_state
     )
     
@@ -144,12 +144,12 @@ def render_sidebar():
     if st.session_state.get("context_management_mode", ContextManagementMode.OFF.value) == ContextManagementMode.SLIDING_WINDOW.value:
         # Kiểm tra nếu biến sliding_window_turns chưa tồn tại trong session_state
         if "sliding_window_turns" not in st.session_state:
-            # Khởi tạo mặc định là 5 turns (5 cặp user-assistant)
-            st.session_state.sliding_window_turns = 5
+            # Khởi tạo mặc định là 5 messages
+            st.session_state.sliding_window_turns = 6
         
-        # Tạo input số để chọn số turns (cặp messages) được giữ lại
+        # Tạo input số để chọn số messages được giữ lại
         st.sidebar.number_input(
-            label="Số turn (sliding window)",
+            label="Số messages (sliding window)",
             min_value=1,   # Tối thiểu 1 turn
             max_value=50,  # Tối đa 50 turns
             value=st.session_state.sliding_window_turns,  # Giá trị hiện tại
@@ -159,20 +159,12 @@ def render_sidebar():
             help="Số cặp user-assistant được giữ lại trong sliding window",
         )
 
-    # Hàm callback được gọi khi toggle "enable_tools" thay đổi giá trị
-    def on_enable_tools_change():
-        """Callback khi bật tools: tự động chuyển sang sliding window mode để quản lý context."""
-        # Nếu tools được bật, tự động chuyển sang chế độ sliding window
-        if st.session_state.enable_tools:
-            st.session_state.context_management_mode = ContextManagementMode.SLIDING_WINDOW.value
-
     # Tạo toggle (nút bật/tắt) để cho phép sử dụng tools
     st.sidebar.toggle(
         label="Cho phép sử dụng công cụ",
-        value=False,  # Mặc định là tắt (False)
+        value=True,  # Mặc định là tắt (False)
         key="enable_tools",  # Lưu vào session_state["enable_tools"]
         # Callback function được gọi khi giá trị thay đổi
-        on_change=on_enable_tools_change,
     )
 
     # ================================================================

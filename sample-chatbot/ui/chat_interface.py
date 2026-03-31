@@ -124,9 +124,14 @@ def render_chat_interface(engine: object):
 
     # Tạo chat input field cho người dùng nhập tin nhắn
     user_input = st.chat_input("Nhập tin nhắn của bạn ở đây...", key="chat_input")
-    
+
     # Kiểm tra nếu người dùng đã nhập tin nhắn (không phải None)
     if user_input:
+        # Prevent duplicate processing on Streamlit rerun
+        if st.session_state.get("_last_handled_input") == user_input:
+            global_logger.debug("Duplicate chat_input detected on rerun; ignoring")
+            return
+        st.session_state["_last_handled_input"] = user_input
         # Ghi log user input (50 ký tự đầu tiên)
         # Ghi log user input (giới hạn 50 ký tự) - không dùng f-string
         global_logger.debug(f"Processing user input: {user_input[:50]}...")
@@ -139,7 +144,7 @@ def render_chat_interface(engine: object):
             # Lấy model từ session_state
             model=st.session_state.selected_model,
             # Input là tin nhắn của user
-            input=user_input,
+            user_prompt=user_input,
             # Lấy temperature từ session_state (độ sáng tạo)
             temperature=st.session_state.temperature,
             # Nếu enable_tools=True thì dùng DEFAULT_TOOLS, ngược lại là None
@@ -148,8 +153,8 @@ def render_chat_interface(engine: object):
             tool_choice=ToolChoice.AUTO if st.session_state.enable_tools else ToolChoice.NONE,
             # Lấy max_tokens từ session_state
             max_tokens=st.session_state.max_tokens,
-            # Lấy system instruction từ session_state
-            instruction=st.session_state.instruction
+            # Lấy system system_prompt từ session_state
+            system_prompt=st.session_state.system_prompt
         )
         
         # Ghi log độ dài phản hồi
@@ -186,6 +191,7 @@ def render_chat_interface(engine: object):
         # Ghi log tổng số messages trong chat history
         # Ghi log tổng số messages trong chat history
         global_logger.debug(f"Updated chat history, total messages: {len(st.session_state.get('chat_history', []))}")
-        
+        # Do not modify widget-backed `st.session_state['chat_input']`.
+        # Use `_last_handled_input` to detect duplicates across reruns.
         # Rerun app để cập nhật UI với messages mới
         st.rerun()

@@ -1,6 +1,12 @@
 # Module 5
 # Import class GroqCloudAdapter từ module model/adapter.py
 from model.adapter import GroqCloudAdapter
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+adapter = GroqCloudAdapter(os.getenv("GROQ_API_KEY"))
+
 
 
 class ChatbotEngine:
@@ -16,15 +22,16 @@ class ChatbotEngine:
         adapter (GroqCloudAdapter): Adapter để kết nối với Groq API
     """
     
-    def __init__(self, api_key: str | None):
+    def __init__(self, adapter: GroqCloudAdapter):
         """
         Khởi tạo ChatbotEngine với GroqCloudAdapter.
         
         Args:
-            api_key: API key từ Groq để xác thực
+            adapter: Instance của GroqCloudAdapter để kết nối với API
+
         """
-        # Tạo adapter với API key được truyền vào
-        self.adapter = GroqCloudAdapter(api_key=api_key)
+        # Sử dụng adapter đã được truyền vào
+        self.adapter = adapter
 
     def response(
         self,

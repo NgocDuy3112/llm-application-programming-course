@@ -7,7 +7,7 @@ các controls để cấu hình:
 - Model selection
 - Temperature (creativity level)
 - Max output tokens
-- System instruction
+- System system_prompt
 - Context management mode (off, sliding window)
 - Tool usage toggle
 
@@ -21,7 +21,7 @@ Session State Managed:
     - selected_model: Model identifier
     - temperature: Float 0.0-1.0
     - max_tokens: Integer 2048-131072
-    - instruction: System prompt string
+    - system_prompt: System prompt string
     - context_management_mode: Memory mode
     - sliding_window_turns: Number of turns for sliding window
     - enable_tools: Boolean for tool usage
@@ -35,7 +35,7 @@ Usage:
 import streamlit as st
 from logger import global_logger
 from custom_types import Provider, ContextManagementMode
-from constants import MODELS_BY_PROVIDER
+from custom_types import MODELS_BY_PROVIDER
 
 
 def render_sidebar():
@@ -47,7 +47,7 @@ def render_sidebar():
     2. Model selection dropdown (dynamic based on provider)
     3. Temperature slider
     4. Max tokens number input
-    5. System instruction textarea
+    5. System system_prompt textarea
     6. Context management mode radio
     7. Sliding window turns input (conditional)
     8. Tools toggle
@@ -106,11 +106,11 @@ def render_sidebar():
     )
 
     st.sidebar.text_area(
-        label="Câu lệnh hệ thống (System Instruction)",
+        label="Câu lệnh hệ thống (System system_prompt)",
         height=200,
         placeholder="Bạn là một trợ lý hữu ích và thân thiện.",
         help="Câu lệnh hệ thống là một phần của prompt được gửi đến mô hình để hướng dẫn cách thức phản hồi. Bạn có thể sử dụng nó để thiết lập bối cảnh, vai trò của chatbot, hoặc bất kỳ hướng dẫn đặc biệt nào mà bạn muốn mô hình tuân theo khi tạo phản hồi.",
-        key="instruction"
+        key="system_prompt"
     )
 
     st.sidebar.radio(
@@ -137,16 +137,11 @@ def render_sidebar():
             help="Số tin nhắn user-assistant được giữ lại trong cửa sổ trượt để cung cấp ngữ cảnh cho phản hồi. Ví dụ: nếu bạn đặt 3, chatbot sẽ sử dụng 3 tin nhắn gần nhất",
         )
 
-    def on_enable_tools_change():
-        if st.session_state.enable_tools:
-            st.session_state.context_management_mode = ContextManagementMode.SLIDING_WINDOW.value
-
     st.sidebar.toggle(
         label="Sử dụng công cụ",
         value=False,
         key="enable_tools",
         help="Bật nếu bạn muốn cho phép chatbot sử dụng các công cụ đã tích hợp (ví dụ: truy vấn cơ sở dữ liệu, gọi API, v.v.) để trả lời câu hỏi của người dùng. Nếu tắt, chatbot sẽ chỉ dựa vào kiến thức đã được huấn luyện mà không sử dụng công cụ bên ngoài nào.",
-        on_change=on_enable_tools_change,
     )
 
     if st.sidebar.button("Cập nhật cài đặt"):

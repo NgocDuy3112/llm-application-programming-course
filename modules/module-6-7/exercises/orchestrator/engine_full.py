@@ -6,7 +6,7 @@ from orchestrator.memory import *
 from model.adapter import *
 
 
-class FullChatbotEngine:
+class EngineFull:
     """
     Chatbot engine orchestrator - quản lý luồng hội thoại và tool execution.
 
@@ -19,7 +19,7 @@ class FullChatbotEngine:
         memory (WindowMemory | None): Memory manager instance
 
     Example:
-        >>> engine = ChatbotEngine(
+        >>> engine = EngineFull(
         ...     adapter=GroqAdapter()
         ... )
         >>> response = engine.response(
@@ -38,7 +38,7 @@ class FullChatbotEngine:
             adapter (BaseAdapter | None): LLM adapter instance
                 - Nếu có thì dùng cái này thay vì tạo từ provider
         """
-        global_logger.debug(f"Initializing ChatbotEngine with adapter={adapter.__class__.__name__}")
+        global_logger.debug(f"Initializing EngineWithSlidingWindowMemory with adapter={adapter.__class__.__name__}")
         self.adapter = adapter
         self.memory = memory
 
@@ -122,3 +122,4 @@ class FullChatbotEngine:
                 })
 
             # Continue loop - messages đã có tool responses, không rebuild từ memory
+

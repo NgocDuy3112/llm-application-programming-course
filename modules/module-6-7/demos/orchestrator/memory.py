@@ -63,7 +63,7 @@ class BaseMemory(ABC):
             role (str): Role của message
                 - 'user': Message từ người dùng
                 - 'assistant': Message từ chatbot
-                - 'system': System instruction
+                - 'system': System system_prompt
             content (str | None): Nội dung text của message
             tool_calls (list | None): Danh sách tool calls (cho assistant messages)
                 - Format: OpenAI tool call objects với .id, .function.name, .function.arguments

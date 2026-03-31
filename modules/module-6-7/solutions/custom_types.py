@@ -54,3 +54,18 @@ class ToolChoice(Enum):
     """
     NONE = "none"
     AUTO = "auto"
+
+
+
+MODELS_BY_PROVIDER = {
+    Provider.GROQ.value: [
+        "openai/gpt-oss-20b",
+        "moonshotai/kimi-k2-instruct-0905",
+        "qwen/qwen3-32b"
+    ],
+    Provider.OLLAMA.value: [
+        "qwen3:0.6b-q4_K_M",      # 4-bit quantized (smaller, faster)
+        "qwen3:0.6b-q8_0",        # 8-bit quantized (balanced)
+        "qwen3:0.6b-fp16",        # Full 16-bit precision (highest quality)
+    ],
+}

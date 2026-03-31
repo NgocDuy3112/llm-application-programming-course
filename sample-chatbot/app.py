@@ -74,7 +74,7 @@ def get_memory(mode: ContextManagementMode):
             # Tạo và trả về WindowMemory instance
             # memory=st.session_state.get("chat_history", []) lấy lịch sử chat hiện tại
             # sliding_window_size=window_size đặt kích thước window
-            return WindowMemory(memory=st.session_state.get("chat_history", []), sliding_window_size=window_size)
+            return SlidingWindowMemory(sliding_window_size=window_size)
         
         # Default case: mode không hợp lệ
         case _:

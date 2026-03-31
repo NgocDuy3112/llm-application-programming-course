@@ -1,94 +1,112 @@
-# Module 5
-# Import thư viện streamlit để xây dựng giao diện web
+"""
+Module 5 - Sidebar (upgraded)
+
+Đồng bộ tính năng sidebar từ module-6-7: thêm toggle công cụ và cấu hình
+cho sliding-window. Không phụ thuộc vào Provider/Model selection để giữ
+đơn giản cho Module 5.
+"""
+
 import streamlit as st
+
 
 def render_sidebar():
     """
-    Render thanh sidebar với các cài đặt chatbot.
-    
-    Sidebar chứa:
-    1. Temperature slider - Điều chỉnh độ sáng tạo
-    2. Max Output Tokens input - Giới hạn độ dài phản hồi
-    3. System Prompt text area - Định hướng hành vi AI
-    4. Context Management radio - Chọn chế độ quản lý ngữ cảnh
-    5. Nút cập nhật và hiển thị cấu hình hiện tại
-    
-    Session State được sử dụng:
-    - st.session_state.temperature: float (0.0 - 1.0)
-    - st.session_state.max_tokens: int
-    - st.session_state.system_prompt: str
-    - st.session_state.context_management_mode: str
+    Render sidebar với các controls cấu hình chung của chatbot:
+    - Temperature
+    - Max output tokens
+    - System prompt
+    - Context management (off | sliding window)
+    - Sliding window turns (nếu bật)
+    - Tools toggle
+
+    Side effects: cập nhật các keys trong `st.session_state` và reset
+    `st.session_state.chat_history` khi nhấn nút "Cập nhật cài đặt".
     """
-    # Tiêu đề sidebar
-    # st.sidebar.title(): tạo tiêu đề cho thanh sidebar bên trái
+
+    # Initialize defaults in session_state so widgets have initial values
+    if "temperature" not in st.session_state:
+        st.session_state.temperature = 0.25
+    if "max_tokens" not in st.session_state:
+        st.session_state.max_tokens = 16384
+    if "system_prompt" not in st.session_state:
+        st.session_state.system_prompt = ""
+    if "context_management_mode" not in st.session_state:
+        st.session_state.context_management_mode = "Tắt"
+    if "sliding_window_turns" not in st.session_state:
+        st.session_state.sliding_window_turns = 2
+    if "enable_tools" not in st.session_state:
+        st.session_state.enable_tools = False
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
+
     st.sidebar.title("Cài đặt Chatbot")
 
-    # TODO 6: Thêm slider cho Temperature (key="temperature")
-    # Temperature kiểm soát độ "sáng tạo" của phản hồi:
-    # - 0.0: Phản hồi xác định nhất, ít biến thiên
-    # - 1.0: Phản hồi sáng tạo nhất, nhiều biến thiên
+    st.sidebar.selectbox(
+        label="Chế độ ngữ cảnh (Module 5)",
+        options=["Tắt", "Cửa sổ trượt (sliding window)"],
+        index=0 if st.session_state.context_management_mode == "Tắt" else 1,
+        key="context_management_mode"
+    )
+
     st.sidebar.slider(
-        label="Độ sáng tạo (Temperature)",  # Nhãn hiển thị cho slider
-        min_value=0.0,  # Giá trị nhỏ nhất có thể chọn
-        max_value=1.0,  # Giá trị lớn nhất có thể chọn
-        value=0.25,  # Giá trị mặc định khi khởi tạo
-        step=0.05,  # Bước nhảy khi tăng/giảm
-        help="Giá trị cao hơn sẽ làm cho phản hồi của mô hình sáng tạo hơn",  # Tooltip khi hover
-        key="temperature"  # Key để lưu giá trị vào session_state
+        label="Độ sáng tạo (Temperature)",
+        min_value=0.0,
+        max_value=1.0,
+        value=st.session_state.temperature,
+        step=0.05,
+        key="temperature",
+        help="Giá trị cao hơn làm cho phản hồi sáng tạo hơn; giá trị thấp hơn làm cho phản hồi an toàn hơn"
     )
-    
-    # TODO 7: Thêm number_input cho Max Output Tokens (key="max_tokens")
-    # Giới hạn số token trong phản hồi:
-    # - Token là đơn vị cơ bản của text (khoảng 4 ký tự tiếng Anh)
-    # - Giá trị cao hơn cho phép phản hồi dài hơn
+
     st.sidebar.number_input(
-        label="Độ dài tối đa của phản hồi (Max Output Tokens)",  # Nhãn hiển thị
-        min_value=2048,  # Giá trị nhỏ nhất có thể nhập
-        max_value=131072,  # Giá trị lớn nhất có thể nhập
-        value=65536,  # Giá trị mặc định khi khởi tạo
-        step=256,  # Bước nhảy khi tăng/giảm
-        help="Giới hạn số token trong phản hồi của mô hình",  # Tooltip khi hover
-        key="max_tokens"  # Key để lưu giá trị vào session_state
+        label="Độ dài tối đa của phản hồi (Max Output Tokens)",
+        min_value=2048,
+        max_value=131072,
+        value=st.session_state.max_tokens,
+        step=256,
+        key="max_tokens",
+        help="Giới hạn số token trong phản hồi của mô hình"
     )
-    
-    # TODO 8: Thêm text_area cho System Prompt (key="system_prompt")
-    # System prompt định hướng hành vi của AI:
-    # - Được gửi đầu tiên trong danh sách messages
-    # - Không hiển thị cho người dùng
+
     st.sidebar.text_area(
-        label="Câu lệnh hệ thống (System Prompt)",  # Nhãn hiển thị
-        height=200,  # Chiều cao của text area (pixels)
-        placeholder="Bạn là một trợ lý hữu ích và thân thiện.",  # Text hiển thị khi chưa nhập
-        key="system_prompt",  # Key để lưu giá trị vào session_state
-        help="Câu lệnh hệ thống hướng dẫn cách thức phản hồi của mô hình"  # Tooltip khi hover
+        label="Câu lệnh hệ thống (System Prompt)",
+        height=180,
+        placeholder="Bạn là một trợ lý hữu ích và thân thiện.",
+        key="system_prompt",
     )
-    
-    # Hiển thị tin nhắn user và lưu vào chat_history
-    # st.sidebar.radio(): tạo các lựa chọn radio button
-    st.sidebar.radio(
-        label="Chọn chế độ quản lý ngữ cảnh",  # Nhãn hiển thị
-        options=[  # Danh sách các lựa chọn
-            "Tắt",  # Tắt quản lý ngữ cảnh
-            "Cửa sổ trượt (sliding window)",  # Sử dụng cửa sổ trượt
-            "Tóm tắt (summarization)"  # Tóm tắt lịch sử
-        ],
-        index=0,  # Index của lựa chọn mặc định (0 = "Tắt")
-        key="context_management_mode",  # Key để lưu giá trị vào session_state
-        help="Chế độ quản lý ngữ cảnh quyết định cách sử dụng lịch sử hội thoại"  # Tooltip khi hover
+
+    # If sliding window selected, allow configuring number of turns
+    if st.session_state.get("context_management_mode") == "Cửa sổ trượt (sliding window)":
+        st.sidebar.number_input(
+            label="Số tin nhắn trong cửa sổ trượt",
+            min_value=1,
+            max_value=50,
+            value=st.session_state.sliding_window_turns,
+            step=1,
+            key="sliding_window_turns",
+            help="Số tin nhắn user-assistant được giữ lại trong cửa sổ trượt",
+        )
+
+    # Toggle to enable external tools (RAG, web search, etc.)
+    def _on_enable_tools_change():
+        if st.session_state.get("enable_tools"):
+            st.session_state.context_management_mode = "Cửa sổ trượt (sliding window)"
+
+    st.sidebar.toggle(
+        label="Sử dụng công cụ",
+        value=st.session_state.enable_tools,
+        key="enable_tools",
+        help="Bật nếu muốn cho phép chatbot gọi các công cụ bên ngoài (search, date, v.v.)",
+        on_change=_on_enable_tools_change,
     )
-    
-    # Nút cập nhật cài đặt
-    # st.sidebar.button(): tạo nút bấm trong sidebar
-    # Trả về True khi nút được nhấn
+
     if st.sidebar.button("Cập nhật cài đặt"):
-        # st.sidebar.success(): hiển thị thông báo thành công
+        # Reset chat history when settings are updated
+        st.session_state.chat_history = []
         st.sidebar.success("Đã cập nhật cấu hình!")
-        
-        # Expander hiển thị chi tiết cấu hình
-        # st.sidebar.expander(): tạo collapsible section trong sidebar
         with st.sidebar.expander("Xem chi tiết cấu hình", expanded=True):
-            # Hiển thị các giá trị cấu hình hiện tại từ session_state
             st.markdown(f"**Độ sáng tạo (Temperature):** {st.session_state.temperature}")
             st.markdown(f"**Số lượng token tối đa (Max Output Tokens):** {st.session_state.max_tokens}")
             st.markdown(f"**Câu lệnh hệ thống (System Prompt):** {st.session_state.system_prompt}")
-            st.markdown(f"**Chế độ quản lý ngữ cảnh (Context Management Mode):** {st.session_state.context_management_mode}")
+            st.markdown(f"**Chế độ quản lý ngữ cảnh:** {st.session_state.context_management_mode}")
+            st.markdown(f"**Sử dụng công cụ:** {st.session_state.enable_tools}")

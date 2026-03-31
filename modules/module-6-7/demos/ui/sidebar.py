@@ -7,7 +7,7 @@ các controls để cấu hình:
 - Model selection
 - Temperature (creativity level)
 - Max output tokens
-- System instruction
+- System system_prompt
 - Context management mode (off, sliding window)
 - Tool usage toggle
 
@@ -21,7 +21,7 @@ Session State Managed:
     - selected_model: Model identifier
     - temperature: Float 0.0-1.0
     - max_tokens: Integer 2048-131072
-    - instruction: System prompt string
+    - system_prompt: System prompt string
     - context_management_mode: Memory mode
     - sliding_window_turns: Number of turns for sliding window
     - enable_tools: Boolean for tool usage
@@ -47,7 +47,7 @@ def render_sidebar():
     2. Model selection dropdown (dynamic based on provider)
     3. Temperature slider
     4. Max tokens number input
-    5. System instruction textarea
+    5. System system_prompt textarea
     6. Context management mode radio
     7. Sliding window turns input (conditional)
     8. Tools toggle
@@ -110,13 +110,13 @@ def render_sidebar():
         key="max_tokens"
     )
     
-    # System instruction - sets chatbot behavior/persona
+    # System system_prompt - sets chatbot behavior/persona
     st.sidebar.text_area(
-        label="Câu lệnh hệ thống (System Instruction)",
+        label="Câu lệnh hệ thống (System system_prompt)",
         height=200,
         placeholder="Bạn là một trợ lý hữu ích và thân thiện.",
         help="Câu lệnh hệ thống là một phần của prompt được gửi đến mô hình để hướng dẫn cách thức phản hồi. Bạn có thể sử dụng nó để thiết lập bối cảnh, vai trò của chatbot, hoặc bất kỳ hướng dẫn đặc biệt nào mà bạn muốn mô hình tuân theo khi tạo phản hồi.",
-        key="instruction"
+        key="system_prompt"
     )
     
     # Context management mode selection

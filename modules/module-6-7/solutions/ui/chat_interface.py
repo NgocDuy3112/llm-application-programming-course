@@ -57,7 +57,7 @@ def render_chat_interface(engine: object):
         - temperature: Creativity level (0.0-1.0)
         - max_tokens: Maximum tokens in response
         - enable_tools: Whether to enable function calling
-        - instruction: System instruction/prompt
+        - system_prompt: System system_prompt/prompt
 
     Note:
         - UI chỉ lưu cleaned content (không có reasoning blocks)
@@ -76,24 +76,21 @@ def render_chat_interface(engine: object):
 
     user_input = st.chat_input("Nhập tin nhắn của bạn ở đây...", key="chat_input")
     if user_input:
-        cleaned_input = re.sub(r"<think>.*?</think>", "", user_input, flags=re.DOTALL | re.IGNORECASE).strip()
-        visible_user_msg = cleaned_input if cleaned_input else "[Phần suy nghĩ nội bộ đã được tách ra]"
-
-        global_logger.debug(f"Processing user input: {visible_user_msg[:50]}...")
+        global_logger.debug(f"Processing user input: {user_input[:50]}...")
         with st.chat_message("user"):
-            st.markdown(visible_user_msg)
+            st.markdown(user_input)
 
-        st.session_state.chat_history.append({"role": "user", "content": visible_user_msg})
+        st.session_state.chat_history.append({"role": "user", "content": user_input})
 
         with st.spinner("Đang suy nghĩ..."):
             assistant_reply = engine.response(
                 model=st.session_state.selected_model,
-                input=cleaned_input,
+                user_prompt=user_input,
                 temperature=st.session_state.temperature,
                 tools=DEFAULT_TOOLS if st.session_state.enable_tools else None,
                 tool_choice=ToolChoice.AUTO if st.session_state.enable_tools else ToolChoice.NONE,
                 max_tokens=st.session_state.max_tokens,
-                instruction=st.session_state.instruction,
+                system_prompt=st.session_state.system_prompt,
             )
 
         assistant_reply_clean = re.sub(r"<think>.*?</think>", "", assistant_reply, flags=re.DOTALL | re.IGNORECASE).strip()
@@ -106,4 +103,7 @@ def render_chat_interface(engine: object):
         })
 
         global_logger.debug(f"Updated chat history, total messages: {len(st.session_state.chat_history)}")
+        # Do not modify `st.session_state['chat_input']` (Streamlit forbids changing
+        # a widget-backed key after the widget is created). We use `_last_handled_input`
+        # to detect duplicates instead. Now re-run to refresh the UI.
         st.rerun()

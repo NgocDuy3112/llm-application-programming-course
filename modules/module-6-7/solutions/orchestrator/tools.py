@@ -110,6 +110,7 @@ def get_current_date() -> str:
     return date_str
 
 
+
 AVAILABLE_FUNCTIONS = {
     "get_current_date": get_current_date,
     "tavily_search": tavily_search,

@@ -26,7 +26,8 @@ Usage:
 from logger import global_logger
 
 
-class WindowMemory:
+
+class SlidingWindowMemory():
     """
     Sliding window memory strategy - giữ k cặp messages gần nhất.
 
@@ -34,71 +35,46 @@ class WindowMemory:
     Điều này giúp hạn chế context length và chi phí API.
 
     Strategy:
-        - Mỗi "turn" = 1 user message + 1 assistant message = 2 messages
-        - sliding_window_size = k => giữ tối đa 2*k messages
+        - Giữ lại N messages gần nhất 
         - Messages cũ hơn bị loại bỏ khỏi context gửi đến LLM
 
     Attributes:
         sliding_window_size (int | None): Số cặp messages để giữ lại
             - None: giữ tất cả (unlimited)
-            - N: giữ 2*N messages (N user-assistant pairs)
+            - N: giữ N messages gần nhất
 
     Example:
-        >>> memory = WindowMemory(sliding_window_size=5)
+        >>> memory = SlidingWindowMemory(sliding_window_size=5)
         >>> memory.add("user", "Hello")
         >>> memory.add("assistant", "Hi there!")
         >>> messages = memory.get_messages()  # Returns list of dicts
     """
 
-    def __init__(self, memory: list | None = None, sliding_window_size: int | None = None):
+    def __init__(self, sliding_window_size: int | None = None):
         """
-        Khởi tạo sliding window memory.
+        Khởi tạo memory buffer.
 
         Args:
-            memory (list | None): Initial messages để load vào buffer
             sliding_window_size (int | None): Số cặp messages để giữ lại
                 - None: giữ tất cả (unlimited context)
-                - N: giữ 2*N messages gần nhất
+                - N: giữ N messages gần nhất
         """
-        global_logger.debug(f"Initializing WindowMemory with sliding_window_size={sliding_window_size}")
-        # Copy provided memory list (if any) to internal buffer
-        self.buffer = list(memory) if memory is not None else []
+        global_logger.debug(f"Initializing SlidingWindowMemory with sliding_window_size={sliding_window_size}")
         self.sliding_window_size = sliding_window_size
+        self.buffer = []
 
-
-    def add(self, role: str, content: str | None = None, tool_calls=None):
+    def add(self, message: dict):
         """
-        Thêm message mới vào memory.
+        Thêm message vào buffer.
 
         Args:
-            role (str): Role của message ('user', 'assistant', 'system', 'tool')
-            content (str | None): Nội dung text của message
-            tool_calls (list | None): Danh sách tool calls (cho assistant messages)
+            message (dict): Message dictionary with keys "role" and "content"
         """
-        global_logger.debug(f"Adding message: role={role}, content={content}, tool_calls={tool_calls}")
-        msg = {"role": role, "content": content}
-        if tool_calls:
-            msg["tool_calls"] = tool_calls
-            global_logger.debug(f"Message includes {len(tool_calls)} tool calls")
-        self.buffer.append(msg)
-
-
-    def add_tool_message(self, tool_call, content: str):
-        """
-        Thêm tool call result message vào buffer.
-
-        Args:
-            tool_call: Tool call object với attributes `.id` và `.function.name`
-            content (str): Kết quả thực thi tool
-        """
-        global_logger.debug(f"Adding tool message for {tool_call.function.name}")
-        self.buffer.append({
-            "role": "tool",
-            "tool_call_id": tool_call.id,
-            "name": tool_call.function.name,
-            "content": str(content)
-        })
-
+        self.buffer.append(message)
+        # Nếu buffer vượt quá giới hạn, loại bỏ messages cũ
+        if self.sliding_window_size is not None:
+            if len(self.buffer) > self.sliding_window_size:
+                self.buffer = self.buffer[-self.sliding_window_size:]
 
     def get_messages(self) -> list:
         """
@@ -107,7 +83,7 @@ class WindowMemory:
         Returns:
             list:
                 - Nếu sliding_window_size is None: tất cả messages trong buffer
-                - Nếu có sliding_window_size: tối đa 2*sliding_window_size messages gần đây
+                - Nếu có sliding_window_size: tối đa sliding_window_size messages gần đây
 
         Note:
             - Buffer gốc không bị modify, chỉ trả về slice
@@ -116,7 +92,6 @@ class WindowMemory:
         if self.sliding_window_size is None:
             global_logger.debug(f"Retrieving all messages from buffer (total: {len(self.buffer)})")
             return self.buffer
-        num_messages = 2 * self.sliding_window_size
-        recent_messages = self.buffer[-num_messages:]
+        recent_messages = self.buffer[-self.sliding_window_size:]
         global_logger.debug(f"Retrieving {len(recent_messages)} recent messages from buffer (total: {len(self.buffer)})")
         return recent_messages
