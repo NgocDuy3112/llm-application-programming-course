@@ -1,7 +1,7 @@
 """
-Module 6-7 - Model Adapter
+Module 6-7 - Model Adapter (Solution)
 
-Mô tả: Triển khai các adapter khác nhau để kết nối với các LLM provider
+Mô tả: Triển khai các adapter khác nhau để kết nối với các LLM providers
 (Groq, Ollama) thông qua OpenAI-compatible API wrapper.
 
 Kiến trúc / Dependencies:
@@ -25,7 +25,6 @@ from abc import ABC, abstractmethod
 from openai import OpenAI
 from dotenv import load_dotenv
 import enum
-import enum
 
 from logger import global_logger
 from custom_types import ToolChoice
@@ -48,7 +47,6 @@ class BaseAdapter(ABC):
     """
 
     def __init__(self):
-        """Khởi tạo adapter bằng cách gọi _initialize_client()."""
         self.client = self._initialize_client()
 
     @abstractmethod
@@ -95,11 +93,21 @@ class BaseAdapter(ABC):
             - Tool choice được convert từ Enum sang value để tương thích API
             - kwargs được pass-through để hỗ trợ thêm params nếu cần
         """
-        # Implementation placeholder: adapter should call the provider's chat API
-        # using `model`, `messages`, `temperature`, `max_tokens`, and any
-        # `tools`/function-calling parameters as required by the provider.
-        # See `exercises/EXERCISE_TODOs.md` for the canonical flow and expectations.
-        pass
+        if isinstance(tool_choice, enum.Enum):
+            tool_choice_value = tool_choice.value
+        else:
+            tool_choice_value = getattr(tool_choice, "value", tool_choice)
+
+        params = dict(
+            model=model,
+            messages=messages,
+            tools=tools,
+            tool_choice=tool_choice_value,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            **kwargs
+        )
+        return self.client.chat.completions.create(**params)
 
 
 class GroqAdapter(BaseAdapter):
@@ -125,15 +133,6 @@ class GroqAdapter(BaseAdapter):
     """
 
     def _initialize_client(self):
-        """
-        Khởi tạo Groq OpenAI client.
-
-        Returns:
-            OpenAI: Groq client configured với base_url và API key
-
-        Raises:
-            ValueError: Nếu GROQ_API_KEY không được set trong environment
-        """
         load_dotenv(dotenv_path=".env", override=True)
         api_key = os.getenv("GROQ_API_KEY")
         global_logger.debug("Initializing Groq client")
@@ -170,20 +169,10 @@ class OllamaAdapter(BaseAdapter):
     """
 
     def _initialize_client(self):
-        """
-        Khởi tạo Ollama OpenAI client.
-
-        Returns:
-            OpenAI: Ollama client configured với localhost:11434
-
-        Note:
-            - Ollama doesn't require real API key, dùng "ollama" làm placeholder
-            - Base URL: http://localhost:11434/v1/
-        """
         global_logger.debug("Initializing Ollama client at http://localhost:11434/v1/")
         return OpenAI(
             base_url="http://localhost:11434/v1/",
-            api_key="ollama"  # Ollama doesn't require real API key
+            api_key="ollama"
         )
 
 
@@ -211,11 +200,9 @@ class MockAdapter(BaseAdapter):
             self.choices = [MockAdapter._MockChoice(MockAdapter._MockMessage(content, tool_calls, reasoning_content))]
 
     def _initialize_client(self):
-        # MockAdapter does not require an external client
         return None
 
     def response(self, model: str, messages: list, tools: list, tool_choice: ToolChoice, temperature: float, max_tokens: int, **kwargs):
-        # Simple behavior: echo the last user message content (or return a default)
         last_user = None
         for m in reversed(messages or []):
             if m.get("role") == "user":
