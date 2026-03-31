@@ -9,8 +9,8 @@ bao gồm:
 - Tách biệt reasoning content (thinking) và response text
 
 Kiến trúc / Dependencies:
-- BaseAdapter: Interface để gọi LLM
-- BaseMemory: Interface để quản lý chat history
+    - BaseAdapter: Interface để gọi LLM
+    - WindowMemory: Class để quản lý chat history (sliding window)
 - ToolChoice: Enum cho tool usage mode
 - AVAILABLE_FUNCTIONS: Registry của các tools có sẵn
 
@@ -34,6 +34,7 @@ from logger import global_logger
 from orchestrator.memory import *
 from orchestrator.tools import *
 from model.adapter import *
+from typing import Optional
 
 
 class FullChatbotEngine:
@@ -46,7 +47,7 @@ class FullChatbotEngine:
 
     Attributes:
         adapter (BaseAdapter): LLM adapter instance
-        memory (BaseMemory | None): Memory manager instance
+        memory (WindowMemory | None): Memory manager instance
 
     Example:
         >>> engine = FullChatbotEngine(
@@ -61,14 +62,14 @@ class FullChatbotEngine:
         ... )
     """
 
-    def __init__(self, adapter: BaseAdapter | None = None, memory: BaseMemory | None = None):
+    def __init__(self, adapter: BaseAdapter | None = None, memory: Optional["WindowMemory"] = None):
         """
         Khởi tạo engine với adapter và memory.
 
         Args:
             adapter (BaseAdapter | None): LLM adapter instance
                 - Nếu có thì dùng cái này thay vì tạo từ provider
-            memory (BaseMemory | None): Memory manager instance
+            memory (WindowMemory | None): Memory manager instance
                 - Nếu None thì không lưu lịch sử hội thoại
         """
         global_logger.debug(f"Initializing FullChatbotEngine with adapter={adapter.__class__.__name__}, memory={memory.__class__.__name__ if memory else 'None'}")
@@ -112,97 +113,39 @@ class FullChatbotEngine:
             - Memory được cập nhật sau mỗi step (user, assistant, tool messages)
             - Reasoning content (<think>...</think>) được tách riêng, không hiển thị
         """
+        # System prompt: ensure `instruction` is converted into a system message
         # HƯỚNG DẪN: Xử lý input từ người dùng
         # 1. Khởi tạo system message từ instruction
         # 2. Kiểm tra chế độ tool_choice để quyết định có gửi tools lên API hay không
         global_logger.info(f"Processing user input: {input[:50]}...")
-        # GỢI Ý: Ví dụ cấu hình mà bạn có thể theo (bỏ comment và điều chỉnh)
-        # system_message = {"role": "system", "content": instruction if instruction else ""}
-        # tools = tools if tool_choice != ToolChoice.NONE else None
-        # streaming_output = kwargs.pop("streaming_output", False)
-        # llm_input = input  # Optionally mask user input before sending to LLM
+        # GỢI Ý (mức cao): Khi xử lý input, bạn có thể thực hiện các bước sau:
+        # - Tạo `system_message` từ `instruction` nếu có.
+        # - Nếu `tool_choice == ToolChoice.NONE` thì không gửi `tools` trong cuộc gọi tới provider.
+        # - Lấy `streaming_output = kwargs.pop("streaming_output", False)` nếu cần xử lý streaming.
+        # - Tạo `llm_input` (có thể tiền xử lý/preprocess input trước khi gửi đến LLM).
+        # - Nếu bạn muốn lưu user message vào memory, gọi `self.memory.add(role="user", content=input)`.
         #
-        # # Lưu tin nhắn user vào memory (engine chịu trách nhiệm append)
-        # if self.memory is not None:
-        #     self.memory.add(role="user", content=input)
-        #
-        # LƯU Ý: Phần triển khai thực tế ở dưới sẽ sử dụng những biến này. Giữ contract của `memory.add`
-        # là: một dict `msg` có keys (role, content) và assistant messages có thể chứa `tool_calls`.
-        #
+        # LƯU Ý: Giữ contract của `memory.add` là một dict với keys `role` và `content`;
+        # assistant messages có thể chứa thêm `tool_calls` để engine biết model đã yêu cầu function calling.
+
 
         # Main tool-calling loop: keep executing until no more tool calls
         while True:
-            # GỢI Ý: "Sanitize" messages trước khi gửi tới LLM API. Ví dụ:
-            # def _sanitize_dict(message: dict) -> dict:
-            #     role = message.get("role")
-            #     content = message.get("content") or ""
-            #     msg = {"role": role, "content": content}
-            #     if role == "tool":  # giữ các trường link cho tool outputs
-            #         msg["tool_call_id"] = message.get("tool_call_id")
-            #         msg["name"] = message.get("name")
-            #     return msg
+            # GỢI Ý (mức cao) — các bước chính trong vòng lặp:
+            # Function-calling loop guidance (see exercises/EXERCISE_TODOs.md for flow):
+            # 1) Build `messages` để gửi cho LLM: [system_message] + sanitized memory messages.
+            #    - Khi sanitize, chỉ giữ `role` và `content` cho hầu hết messages.
+            #    - Nếu `role == "tool"`, giữ thêm `tool_call_id` và `name` để link với tool output.
+            # 2) Nếu bạn tiền xử lý (preprocess) user input, đảm bảo last user message content = llm_input.
+            # 3) Gọi `self.adapter.response(...)` với các tham số phù hợp và kiểm tra `response.choices`.
+            # 4) Lấy `last_message = response.choices[0].message` một cách an toàn.
+            # 5) Nếu `last_message` không có `tool_calls`: lưu assistant message vào memory (nếu cần)
+            #    và trả về `last_message.content` (loại bỏ `reasoning_content` khi hiển thị).
+            # 6) Nếu có `tool_calls`: lưu assistant message kèm `tool_calls` vào memory, duyệt từng
+            #    `tool_call`, parse arguments một cách robust (nếu là string thì json.loads, nếu dict dùng trực tiếp),
+            #    gọi `AVAILABLE_FUNCTIONS[tool_name](**tool_args)` và lưu kết quả bằng `add_tool_message`.
+            # 7) Lặp lại vòng vì LLM sẽ thấy kết quả tool trong memory và có thể trả lời tiếp.
             #
-            # messages = [system_message] + [_sanitize_dict(m) for m in self.memory.get_messages()]
-            # if messages and messages[-1].get("role") == "user":
-            #     messages[-1] = {"role": "user", "content": llm_input}
-            #
-            # (Nếu memory là None, gửi [system_message, {"role":"user","content":llm_input}])
-
-            # GỢI Ý: Nếu bạn dùng masking cho user input (ví dụ: ẩn PII), thay content của tin nhắn user cuối cùng:
-            # if messages and messages[-1].get("role") == "user":
-            #     messages[-1]["content"] = llm_input
-
-            # GỢI Ý: Gọi adapter và truy xuất last_message một cách an toàn. Ví dụ:
-            # response = self.adapter.response(
-            #     model=model,
-            #     messages=messages,
-            #     tools=tools,
-            #     tool_choice=tool_choice,
-            #     temperature=temperature,
-            #     max_tokens=max_tokens,
-            #     **kwargs
-            # )
-            # # Truy cập an toàn
-            # if not getattr(response, "choices", None):
-            #     raise RuntimeError("LLM response has no choices")
-            # last_message = response.choices[0].message
-
-            # GỢI Ý: Kiểm tra `tool_calls` và xử lý assistant message. Ví dụ:
-            # if not getattr(last_message, "tool_calls", None):
-            #     if self.memory is not None:
-            #         self.memory.add(role="assistant", content=last_message.content)
-            #     thinking = getattr(last_message, "reasoning_content", None) or ""
-            #     text = last_message.content or ""
-            #     return text
-            # # Nếu có tool_calls, lưu assistant message kèm tool_calls để audit:
-            # if self.memory is not None:
-            #     self.memory.add(role="assistant", content=last_message.content, tool_calls=last_message.tool_calls)
-
-            # GỢI Ý: Parse tool arguments một cách chắc chắn và gọi các hàm đã đăng ký. Ví dụ:
-            # def _parse_tool_args(arg_field):
-            #     if isinstance(arg_field, str):
-            #         try:
-            #             return json.loads(arg_field)
-            #         except:
-            #             return {}
-            #     if isinstance(arg_field, dict):
-            #         return arg_field
-            #     return {}
-            #
-            # for tool_call in last_message.tool_calls:
-            #     tool_name = tool_call.function.name
-            #     tool_args = _parse_tool_args(tool_call.function.arguments)
-            #     if tool_name in AVAILABLE_FUNCTIONS:
-            #         try:
-            #             tool_response = AVAILABLE_FUNCTIONS[tool_name](**tool_args)
-            #         except Exception as e:
-            #             tool_response = f"Error executing {tool_name}: {e}"
-            #     else:
-            #         tool_response = f"Unknown tool: {tool_name}"
-            #     # Lưu kết quả tool vào memory để LLM có thể thấy ở lượt sau:
-            #     if self.memory is not None:
-            #         self.memory.add_tool_message(tool_call, tool_response)
-            #
-            # LƯU Ý: Đảm bảo các hàm trong AVAILABLE_FUNCTIONS chấp nhận kwargs hoặc có giá trị mặc định hợp lý.
+            # LƯU Ý: luôn log tại mỗi bước và xử lý exception để tránh loop vô hạn hoặc crash.
             break
 

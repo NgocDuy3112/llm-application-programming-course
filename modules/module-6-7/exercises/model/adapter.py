@@ -25,6 +25,7 @@ from abc import ABC, abstractmethod
 from openai import OpenAI
 from dotenv import load_dotenv
 import enum
+import enum
 
 from logger import global_logger
 from custom_types import ToolChoice
@@ -94,30 +95,10 @@ class BaseAdapter(ABC):
             - Tool choice được convert từ Enum sang value để tương thích API
             - kwargs được pass-through để hỗ trợ thêm params nếu cần
         """
-        # GỢI Ý: Thực hiện gọi API thông qua OpenAI-compatible client.
-        # Chú ý: tool_choice (ToolChoice Enum) cần được convert sang value trước khi đưa vào params.
-        # Ví dụ mẫu (bỏ comment và điều chỉnh khi triển khai):
-        # global_logger.debug(f"Calling API with model {model}")
-        # # Convert ToolChoice enum to value
-        # if isinstance(tool_choice, enum.Enum):
-        #     tool_choice_value = tool_choice.value
-        # else:
-        #     tool_choice_value = getattr(tool_choice, "value", tool_choice)
-        #
-        # params = dict(
-        #     model=model,
-        #     messages=messages,
-        #     tools=tools,
-        #     tool_choice=tool_choice_value,
-        #     temperature=temperature,
-        #     max_tokens=max_tokens,
-        #     **kwargs
-        # )
-        # # Gọi API: chú ý một số provider (OpenAI) yêu cầu key name khác (ví dụ 'functions' thay cho 'tools')
-        # return self.client.chat.completions.create(**params)
-        #
-        # LƯU Ý: Khi viết adapter, kiểm tra tài liệu của provider để map đúng tham số (functions vs tools,
-        # function_call vs tool_choice, streaming output, v.v.).
+        # Implementation placeholder: adapter should call the provider's chat API
+        # using `model`, `messages`, `temperature`, `max_tokens`, and any
+        # `tools`/function-calling parameters as required by the provider.
+        # See `exercises/EXERCISE_TODOs.md` for the canonical flow and expectations.
         pass
 
 
@@ -204,3 +185,41 @@ class OllamaAdapter(BaseAdapter):
             base_url="http://localhost:11434/v1/",
             api_key="ollama"  # Ollama doesn't require real API key
         )
+
+
+class MockAdapter(BaseAdapter):
+    """
+    A lightweight adapter for exercises that returns deterministic mock responses.
+
+    Purpose: allow students to run the app/engine end-to-end without real API keys.
+    The mock response exposes the minimal response shape expected by the engine:
+    response.choices[0].message.content and response.choices[0].message.tool_calls
+    """
+
+    class _MockMessage:
+        def __init__(self, content: str = "", tool_calls=None, reasoning_content: str | None = None):
+            self.content = content
+            self.tool_calls = tool_calls or []
+            self.reasoning_content = reasoning_content
+
+    class _MockChoice:
+        def __init__(self, message):
+            self.message = message
+
+    class _MockResponse:
+        def __init__(self, content: str = "", tool_calls=None, reasoning_content: str | None = None):
+            self.choices = [MockAdapter._MockChoice(MockAdapter._MockMessage(content, tool_calls, reasoning_content))]
+
+    def _initialize_client(self):
+        # MockAdapter does not require an external client
+        return None
+
+    def response(self, model: str, messages: list, tools: list, tool_choice: ToolChoice, temperature: float, max_tokens: int, **kwargs):
+        # Simple behavior: echo the last user message content (or return a default)
+        last_user = None
+        for m in reversed(messages or []):
+            if m.get("role") == "user":
+                last_user = m
+                break
+        content = f"[mock reply] {last_user.get('content') if last_user else 'hello'}"
+        return MockAdapter._MockResponse(content=content)

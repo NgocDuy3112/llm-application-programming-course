@@ -57,8 +57,7 @@ def test_import_model_adapter():
 
 def test_import_orchestrator_memory():
     """Test that orchestrator.memory can be imported and classes work."""
-    from orchestrator.memory import BaseMemory, WindowMemory
-    assert BaseMemory is not None
+    from orchestrator.memory import WindowMemory
     assert WindowMemory is not None
     # Test WindowMemory initialization and get_messages
     mem = WindowMemory(sliding_window_size=2)

@@ -35,7 +35,7 @@ class FullChatbotEngine:
             memory: BaseMemory instance - nếu None thì tạo mặc định
         """
         # Ghi log debug: khởi tạo engine với adapter và memory
-        global_logger.debug("Initializing FullChatbotEngine with adapter={}, memory={}".format(adapter.__class__.__name__, memory.__class__.__name__))
+        global_logger.debug(f"Initializing FullChatbotEngine with adapter={adapter.__class__.__name__}, memory={memory.__class__.__name__}")
         
         # Lưu adapter vào instance variable
         self.adapter = adapter
@@ -71,7 +71,7 @@ class FullChatbotEngine:
             str: Phản hồi từ LLM
         """
         # Ghi log info: bắt đầu xử lý input (50 ký tự đầu tiên)
-        global_logger.info("Processing user input: {}...".format(input[:50]))
+        global_logger.info(f"Processing user input: {input[:50]}...")
         
         # Tạo system message dictionary
         # Nếu có instruction thì dùng, ngược lại để content rỗng
@@ -85,7 +85,7 @@ class FullChatbotEngine:
         streaming_output = kwargs.pop("streaming_output", False)
         
         # Ghi log debug: streaming_output flag
-        global_logger.debug("streaming_output={}".format(streaming_output))
+        global_logger.debug(f"streaming_output={streaming_output}")
 
         # Lưu original input cho auditing/memory
         original_input = input
@@ -185,13 +185,13 @@ class FullChatbotEngine:
                 text = last_message.content or ""
                 
                 # Ghi log debug: độ dài thinking và text
-                global_logger.debug("Response complete - thinking: {} chars, text: {} chars".format(len(thinking), len(text)))
+                global_logger.debug(f"Response complete - thinking: {len(thinking)} chars, text: {len(text)} chars")
                 
                 # Trả về text content (không include thinking)
                 return text
 
             # Nếu có tool calls, ghi log debug
-            global_logger.debug("Tool calls detected: {}".format([tc.function.name for tc in last_message.tool_calls]))
+            global_logger.debug(f"Tool calls detected: {[tc.function.name for tc in last_message.tool_calls]}")
             
             # Nếu có memory, thêm assistant message với tool calls vào memory
             if self.memory is not None:
@@ -207,7 +207,7 @@ class FullChatbotEngine:
                 tool_name = tool_call.function.name
                 
                 # Ghi log debug: tên tool được thực thi
-                global_logger.debug("Executing tool: {}".format(tool_name))
+                global_logger.debug(f"Executing tool: {tool_name}")
                 
                 # Try-except để parse arguments
                 try:
@@ -221,22 +221,22 @@ class FullChatbotEngine:
                 if tool_name in AVAILABLE_FUNCTIONS:
                     try:
                         # Ghi log debug: gọi tool với arguments
-                        global_logger.debug("Calling {} with args: {}".format(tool_name, tool_args))
+                        global_logger.debug(f"Calling {tool_name} with args: {tool_args}")
                         
                         # Gọi tool function với unpacked arguments
                         tool_response = AVAILABLE_FUNCTIONS[tool_name](**tool_args)
                     # Xử lý exception nếu tool execution failed
                     except Exception as e:
                         # Ghi log error
-                        global_logger.error("Error executing {}: {}".format(tool_name, str(e)))
+                        global_logger.error(f"Error executing {tool_name}: {str(e)}")
                         # Set tool_response là error message
-                        tool_response = "Error executing {}: {}".format(tool_name, str(e))
+                        tool_response = f"Error executing {tool_name}: {str(e)}"
                 # Nếu tool_name không có trong AVAILABLE_FUNCTIONS
                 else:
                     # Ghi log warning: unknown tool
-                    global_logger.warning("Unknown tool: {}".format(tool_name))
+                    global_logger.warning(f"Unknown tool: {tool_name}")
                     # Set tool_response là error message
-                    tool_response = "Unknown tool: {}".format(tool_name)
+                    tool_response = f"Unknown tool: {tool_name}"
                 
                 # Nếu có memory, thêm tool response vào memory
                 if self.memory is not None:

@@ -46,7 +46,7 @@ def _render_retrieved_docs(docs_str: str):
     # Tạo expander (collapsible section) để hiển thị tài liệu tham khảo
     # expanded=False nghĩa là mặc định sẽ đóng
     # Dùng .format thay cho f-string để tương thích với yêu cầu
-    with st.expander("📚 Tài liệu tham khảo ({}) đoạn".format(len(chunks)), expanded=False):
+    with st.expander(f"📚 Tài liệu tham khảo ({len(chunks)}) đoạn", expanded=False):
         # Lặp qua từng chunk trong danh sách chunks
         for chunk in chunks:
             # Tách chunk thành 2 phần: header (dòng đầu) và body (phần còn lại)
@@ -61,12 +61,12 @@ def _render_retrieved_docs(docs_str: str):
             body = lines[1].strip() if len(lines) > 1 else chunk.strip()
 
             # Hiển thị header với format đậm (dùng .format thay f-string)
-            st.markdown("**{}**".format(header))
+            st.markdown(f"**{header}**")
 
-            # Hiển thị body với custom CSS styling; đặt body vào template bằng .format
-            html = ("<div style='background:#f8f9fa;border-left:3px solid #4CAF50;"
+            # Hiển thị body với custom CSS styling; đặt body vào template bằng f-string
+            html = (f"<div style='background:#f8f9fa;border-left:3px solid #4CAF50;"
                     "padding:8px 12px;border-radius:4px;font-size:0.9em;"
-                    "white-space:pre-wrap;'>{}</div>").format(body)
+                    "white-space:pre-wrap;'>{body}</div>")
             st.markdown(html, unsafe_allow_html=True)
             
             # Tạo đường kẻ ngang phân cách giữa các chunks
@@ -120,7 +120,7 @@ def render_chat_interface(engine: object):
         
         # Ghi log số messages đã hiển thị
         # Ghi log số messages đã hiển thị (dùng .format thay f-string)
-        global_logger.debug("Displayed {} messages from chat history".format(len(st.session_state.get("chat_history", []))))
+        global_logger.debug(f"Displayed {len(st.session_state.get('chat_history', []))} messages from chat history")
 
     # Tạo chat input field cho người dùng nhập tin nhắn
     user_input = st.chat_input("Nhập tin nhắn của bạn ở đây...", key="chat_input")
@@ -129,7 +129,7 @@ def render_chat_interface(engine: object):
     if user_input:
         # Ghi log user input (50 ký tự đầu tiên)
         # Ghi log user input (giới hạn 50 ký tự) - không dùng f-string
-        global_logger.debug("Processing user input: {}...".format(user_input[:50]))
+        global_logger.debug(f"Processing user input: {user_input[:50]}...")
 
         # Thêm message của user vào chat history
         st.session_state.chat_history.append({"role": "user", "content": user_input})
@@ -154,7 +154,7 @@ def render_chat_interface(engine: object):
         
         # Ghi log độ dài phản hồi
         # Ghi log độ dài phản hồi
-        global_logger.debug("Assistant reply generated, length: {}".format(len(assistant_reply)))
+        global_logger.debug(f"Assistant reply generated, length: {len(assistant_reply)}")
 
         # Lấy retrieved docs từ session_state và xóa nó khỏi session_state
         # pop() trả về giá trị và xóa key khỏi dict
@@ -162,7 +162,7 @@ def render_chat_interface(engine: object):
         
         # Ghi log retrieved docs (hoặc None nếu không có)
         # Ghi log retrieved docs (hoặc 'None')
-        global_logger.debug("Retrieved docs: {}".format(retrieved_docs if retrieved_docs else 'None'))
+        global_logger.debug(f"Retrieved docs: {retrieved_docs if retrieved_docs else 'None'}")
 
         # Tạo chat message bubble cho assistant
         with st.chat_message("assistant"):
@@ -185,7 +185,7 @@ def render_chat_interface(engine: object):
 
         # Ghi log tổng số messages trong chat history
         # Ghi log tổng số messages trong chat history
-        global_logger.debug("Updated chat history, total messages: {}".format(len(st.session_state.get("chat_history", []))))
+        global_logger.debug(f"Updated chat history, total messages: {len(st.session_state.get('chat_history', []))}")
         
         # Rerun app để cập nhật UI với messages mới
         st.rerun()

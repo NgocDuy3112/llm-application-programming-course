@@ -196,7 +196,7 @@ def render_sidebar():
 
         # Nếu có chunks (> 0), hiển thị thông tin số lượng (dùng .format thay f-string)
         if chunk_count > 0:
-            st.sidebar.info("📄 {} chunks trong Knowledge Base".format(chunk_count))
+            st.sidebar.info(f"📄 {chunk_count} chunks trong Knowledge Base")
         else:
             # Nếu không có chunks, hiển thị message "đang trống"
             st.sidebar.caption("Knowledge base đang trống")
@@ -230,14 +230,14 @@ def render_sidebar():
                     num_chunks = rag.add_documents(uploaded_files)
 
                 # Hiển thị message thành công với số chunks đã thêm
-                st.sidebar.success("✅ Đã thêm {} chunks!".format(num_chunks))
+                st.sidebar.success(f"✅ Đã thêm {num_chunks} chunks!")
                 # Ghi log thông tin
-                global_logger.info("Added {} chunks to knowledge base".format(num_chunks))
+                global_logger.info(f"Added {num_chunks} chunks to knowledge base")
             except Exception as e:
                 # Hiển thị lỗi cho người dùng (dùng .format)
-                st.sidebar.error("❌ Lỗi: {}".format(str(e)))
+                st.sidebar.error(f"❌ Lỗi: {str(e)}")
                 # Ghi log lỗi
-                global_logger.error("Error adding documents: {}".format(str(e)))
+                global_logger.error(f"Error adding documents: {str(e)}")
 
     # Danh sách file + xóa riêng lẻ
     # Hiển thị tất cả nguồn tài liệu đã upload và cho phép xóa từng file
@@ -252,29 +252,29 @@ def render_sidebar():
         if sources:
             # Tạo expander (collapsible section) để hiển thị danh sách files
             # Hiển thị expander danh sách files đã upload
-            with st.sidebar.expander("📁 Tài liệu ({}) file".format(len(sources)), expanded=False):
+            with st.sidebar.expander(f"📁 Tài liệu ({len(sources)}) file", expanded=False):
                 # Lặp qua từng item trong danh sách sources
                 for item in sources:
                     # Tạo 2 columns với tỉ lệ 3:1 (cột 1 rộng hơn cột 2)
                     col1, col2 = st.columns([3, 1])
-                    
+
                     # Cột 1: Hiển thị thông tin file
                     with col1:
-                        # Hiển thị tên file và số chunk (dùng .format)
-                        st.caption("📄 {} ({} chunks)".format(item.get('source', ''), item.get('chunk_count', 0)))
-                    
+                        # Hiển thị tên file và số chunk
+                        st.caption(f"📄 {item.get('source', '')} ({item.get('chunk_count', 0)} chunks)")
+
                     # Cột 2: Nút xóa file
                     with col2:
-                        # Tạo button xóa với icon 🗑️; key và help không dùng f-string
-                        key_name = "del_{}".format(item.get('source', ''))
-                        help_text = "Xóa {}".format(item.get('source', ''))
+                        # Tạo button xóa với icon 🗑️; key và help dùng f-strings
+                        key_name = f"del_{item.get('source', '')}"
+                        help_text = f"Xóa {item.get('source', '')}"
                         if st.button("🗑️", key=key_name, help=help_text):
                             # Xóa file khỏi knowledge base
                             deleted = rag.delete_source(item.get("source"))
                             # Hiển thị message thành công
-                            st.success("✅ Đã xóa {} chunks!".format(deleted))
+                            st.success(f"✅ Đã xóa {deleted} chunks!")
                             # Ghi log
-                            global_logger.info("Deleted source: {} ({} chunks)".format(item.get('source'), deleted))
+                            global_logger.info(f"Deleted source: {item.get('source')} ({deleted} chunks)")
                             # Rerun app để cập nhật UI
                             st.rerun()
 
@@ -295,8 +295,7 @@ def render_sidebar():
     # Tạo button "Cập nhật cài đặt"
     if st.sidebar.button("Cập nhật cài đặt"):
         # Nút cập nhật: log cấu hình mới và xóa lịch sử chat để áp dụng cài đặt
-        settings_msg = ("Settings updated: Selected provider: {}, model: {}, Temperature: {}, Max tokens: {}, Context Management Mode: {}, Tools enabled: {}"
-                        .format(st.session_state.get('selected_provider'), st.session_state.get('selected_model'), st.session_state.get('temperature'), st.session_state.get('max_tokens'), str(ContextManagementMode(st.session_state.get('context_management_mode'))), st.session_state.get('enable_tools')))
+        settings_msg = f"Settings updated: Selected provider: {st.session_state.get('selected_provider')}, model: {st.session_state.get('selected_model')}, Temperature: {st.session_state.get('temperature')}, Max tokens: {st.session_state.get('max_tokens')}, Context Management Mode: {str(ContextManagementMode(st.session_state.get('context_management_mode')))}, Tools enabled: {st.session_state.get('enable_tools')}"
         # Ghi log cấu hình
         global_logger.info(settings_msg)
         # Xóa lịch sử chat để áp dụng cài đặt mới

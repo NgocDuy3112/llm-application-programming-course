@@ -8,7 +8,7 @@ Contains the core chatbot orchestration logic:
 
 Modules:
     engine: FullChatbotEngine for conversation orchestration
-    memory: BaseMemory, WindowMemory for context management
+    memory: WindowMemory for context management
     tools: Available functions and tool definitions
 
 Usage:

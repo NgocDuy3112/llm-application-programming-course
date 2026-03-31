@@ -1,33 +1,33 @@
 """
-Module 6-7 - Sidebar UI
+Module 6-7 - Giao diện Sidebar
 
-Mô tả: Streamlit sidebar component cho chatbot demo. Sidebar này cung cấp
-các controls để cấu hình:
-- LLM provider (Groq, Ollama)
-- Model selection
-- Temperature (creativity level)
-- Max output tokens
-- System instruction
-- Context management mode (off, sliding window)
-- Tool usage toggle
+Mô tả: Component sidebar (Streamlit) cho demo chatbot. Sidebar cung cấp
+các điều khiển để cấu hình:
+- Nhà cung cấp LLM (Groq, Ollama)
+- Chọn mô hình
+- Độ sáng tạo (temperature)
+- Số token tối đa trả về
+- Câu lệnh hệ thống
+- Chế độ quản lý ngữ cảnh (tắt, cửa sổ trượt)
+- Bật/tắt sử dụng công cụ (function calling)
 
-Kiến trúc / Dependencies:
-- Streamlit: Web UI framework
-- custom_types: Provider, ContextManagementMode enums
-- constants: MODELS_BY_PROVIDER mapping
+Kiến trúc / Phụ thuộc:
+- Streamlit: Framework UI web
+- custom_types: Enum Provider, ContextManagementMode
+- constants: Bản đồ MODELS_BY_PROVIDER
 
-Session State Managed:
-    - selected_provider: Provider name (groq, ollama)
-    - selected_model: Model identifier
+Trạng thái phiên (session state) được quản lý:
+    - selected_provider: Tên provider (groq, ollama)
+    - selected_model: ID model được chọn
     - temperature: Float 0.0-1.0
-    - max_tokens: Integer 2048-131072
-    - instruction: System prompt string
-    - context_management_mode: Memory mode
-    - sliding_window_turns: Number of turns for sliding window
-    - enable_tools: Boolean for tool usage
-    - chat_history: Reset when settings updated
+    - max_tokens: Integer (số token tối đa)
+    - instruction: Câu lệnh hệ thống (system prompt)
+    - context_management_mode: Chế độ quản lý ngữ cảnh
+    - sliding_window_turns: Số lượt trong cửa sổ trượt
+    - enable_tools: Bool bật/tắt sử dụng công cụ
+    - chat_history: Lịch sử chat (reset khi cập nhật cài đặt)
 
-Usage:
+Cách sử dụng:
     from ui.sidebar import render_sidebar
     render_sidebar()
 """
@@ -40,23 +40,23 @@ from constants import MODELS_BY_PROVIDER
 
 def render_sidebar():
     """
-    Render sidebar với các controls để cấu hình chatbot.
+    Render sidebar chứa các control để cấu hình chatbot.
 
-    Sidebar components (theo thứ tự):
-    1. Provider selection dropdown
-    2. Model selection dropdown (dynamic based on provider)
-    3. Temperature slider
-    4. Max tokens number input
-    5. System instruction textarea
-    6. Context management mode radio
-    7. Sliding window turns input (conditional)
-    8. Tools toggle
-    9. Update settings button
+    Các thành phần sidebar (theo thứ tự):
+    1. Hộp chọn nhà cung cấp (Provider)
+    2. Hộp chọn mô hình (dynamic theo provider)
+    3. Thanh trượt cho temperature
+    4. Input số cho max tokens
+    5. Textarea cho câu lệnh hệ thống
+    6. Radio cho chế độ quản lý ngữ cảnh
+    7. Input số cho số lượt cửa sổ trượt (nếu áp dụng)
+    8. Toggle bật/tắt sử dụng công cụ
+    9. Nút cập nhật cài đặt
 
-    Side Effects:
-        - Updates st.session_state với các giá trị từ controls
-        - Auto-toggles context mode khi bật tools
-        - Resets chat_history khi click "Cập nhật cài đặt"
+    Tác động phụ:
+        - Cập nhật `st.session_state` với các giá trị từ controls
+        - Tự động bật chế độ cửa sổ trượt khi bật công cụ
+        - Reset `chat_history` khi nhấn nút "Cập nhật cài đặt"
     """
     global_logger.debug("Rendering sidebar")
     
@@ -68,108 +68,119 @@ def render_sidebar():
     
     st.sidebar.title("Cài đặt Chatbot")
     
-    # Provider selection
+    # Hộp chọn nhà cung cấp mô hình, với các tùy chọn lấy từ enum Provider, bao gồm Groq và Ollama
     st.sidebar.selectbox(
-        label="Chọn nhà cung cấp mô hình",
+        label="Chọn nhà cung cấp mô hình", # Nhãn cho hộp chọn
+        # Các tùy chọn cho nhà cung cấp mô hình, lấy giá trị từ enum Provider
         options=[
             Provider.GROQ.value,
             Provider.OLLAMA.value
         ],
-        index=0,
-        key="selected_provider"
+        index=0, # Mặc định chọn tùy chọn đầu tiên (Groq)
+        key="selected_provider", # Key để lưu giá trị đã chọn trong session_state
+        help="Chọn nhà cung cấp LLM mà bạn muốn sử dụng cho chatbot. Groq là một nền tảng LLM dựa trên đám mây, trong khi Ollama cho phép bạn chạy mô hình LLM cục bộ trên máy của mình." # Mô tả chức năng của hộp chọn
     )
 
-    # Model selection (dynamic based on selected provider)
+    # Biến available_models được tính toán dựa trên provider đã chọn, lấy từ hằng số MODELS_BY_PROVIDER
     available_models = MODELS_BY_PROVIDER.get(st.session_state.selected_provider, [])
+    # Hộp chọn mô hình
     st.sidebar.selectbox(
-        label="Chọn mô hình",
-        options=available_models,
-        index=0,
-        key="selected_model"
+        label="Chọn mô hình", # Nhãn cho hộp chọn
+        options=available_models, # Các tùy chọn mô hình dựa trên provider đã chọn
+        index=0, # Mặc định chọn tùy chọn đầu tiên trong danh sách mô hình
+        key="selected_model", # Key để lưu giá trị đã chọn trong session_state
+        help="Chọn mô hình ngôn ngữ lớn (LLM) mà bạn muốn sử dụng cho chatbot. Các mô hình khác nhau có thể có khả năng và hiệu suất khác nhau, vì vậy hãy chọn mô hình phù hợp với nhu cầu của bạn." # Mô tả chức năng của hộp chọn
     )
     
-    # Temperature slider - controls randomness/creativity
+    # Thanh trượt để chọn độ sáng tạo (temperature)
     st.sidebar.slider(
-        label="Độ sáng tạo (Temperature)",
-        min_value=0.0,
-        max_value=1.0,
-        value=0.25,
-        step=0.05,
-        help="Giá trị cao hơn sẽ làm cho phản hồi của mô hình sáng tạo hơn, trong khi giá trị thấp hơn sẽ làm cho phản hồi an toàn và tập trung hơn",
-        key="temperature"
+        label="Độ sáng tạo (Temperature)", # Nhãn cho thanh trượt
+        min_value=0.0, # Giá trị tối thiểu là 0.0
+        max_value=1.0, # Giá trị tối đa là 1.0
+        value=0.25, # Giá trị mặc định
+        step=0.05, # Bước tăng giảm
+        help="Giá trị cao hơn sẽ làm cho phản hồi của mô hình sáng tạo hơn, trong khi giá trị thấp hơn sẽ làm cho phản hồi an toàn và tập trung hơn", # Mô tả chức năng của thanh trượt
+        key="temperature" # Key để lưu giá trị trong session_state
     )
     
-    # Max tokens input - limits response length
+    # Khung number input để chọn độ dài tối đa của phản hồi (max output tokens)
     st.sidebar.number_input(
-        label="Độ dài tối đa của phản hồi (Max Output Tokens)",
-        min_value=2048,
-        max_value=131072,
-        value=16384,
-        step=256,
-        help="Giới hạn số token trong phản hồi của mô hình, bao gồm cả token suy luận nếu có",
-        key="max_tokens"
+        label="Độ dài tối đa của phản hồi (Max Output Tokens)", # Nhãn cho number input
+        min_value=2048, # Giá trị tối thiểu (tùy theo yêu cầu của mô hình, thường là 2048)
+        max_value=131072, # Giá trị tối đa (tùy theo khả năng của mô hình, có thể lên đến 131072 hoặc hơn)
+        value=16384, # Giá trị mặc định (có thể điều chỉnh tùy theo nhu cầu, ví dụ 16384)
+        step=256, # Bước tăng giảm (tùy theo nhu cầu, ví dụ 256)
+        help="Giới hạn số token trong phản hồi của mô hình, bao gồm cả token suy luận nếu có", # Mô tả chức năng của number input
+        key="max_tokens" # Key để lưu giá trị trong session_state
     )
+
+    # Note: temperature and max_tokens are UI-configurable and should be
+    # forwarded through `engine.response` -> `adapter.response` when calling the model.
     
-    # System instruction - sets chatbot behavior/persona
+    # Khung text_area để nhập câu lệnh hệ thống
     st.sidebar.text_area(
-        label="Câu lệnh hệ thống (System Instruction)",
-        height=200,
-        placeholder="Bạn là một trợ lý hữu ích và thân thiện.",
-        help="Câu lệnh hệ thống là một phần của prompt được gửi đến mô hình để hướng dẫn cách thức phản hồi. Bạn có thể sử dụng nó để thiết lập bối cảnh, vai trò của chatbot, hoặc bất kỳ hướng dẫn đặc biệt nào mà bạn muốn mô hình tuân theo khi tạo phản hồi.",
-        key="instruction"
+        label="Câu lệnh hệ thống (System Instruction)", # Nhãn cho text area
+        height=200, # Chiều cao của text area
+        placeholder="Bạn là một trợ lý hữu ích và thân thiện.", # Văn bản gợi ý khi chưa nhập gì
+        help="Câu lệnh hệ thống là một phần của prompt được gửi đến mô hình để hướng dẫn cách thức phản hồi. Bạn có thể sử dụng nó để thiết lập bối cảnh, vai trò của chatbot, hoặc bất kỳ hướng dẫn đặc biệt nào mà bạn muốn mô hình tuân theo khi tạo phản hồi.", # Mô tả chức năng của text area
+        key="instruction" # Key để lưu giá trị trong session_state
     )
     
-    # Context management mode selection
+    # Khung radio để chọn chế độ quản lý ngữ cảnh
     st.sidebar.radio(
-        label="Chọn chế độ quản lý ngữ cảnh",
+        label="Chọn chế độ quản lý ngữ cảnh", # Nhãn cho khung radio
+        # Các tùy chọn cho chế độ quản lý ngữ cảnh, lấy giá trị từ enum ContextManagementMode
         options=[
             ContextManagementMode.OFF.value,
             ContextManagementMode.SLIDING_WINDOW.value,
         ],
-        index=0,
-        help="Chế độ quản lý ngữ cảnh sẽ quyết định cách chatbot sử dụng lịch sử hội thoại để tạo phản hồi. 'Tắt' sẽ không sử dụng lịch sử nào, 'Cửa sổ trượt' sẽ chỉ sử dụng một số lượng tin nhắn gần đây nhất dựa trên kích thước cửa sổ đã định.",
-        key="context_management_mode"
+        index=0, # Mặc định chọn tùy chọn đầu tiên (OFF)
+        help="Chế độ quản lý ngữ cảnh sẽ quyết định cách chatbot sử dụng lịch sử hội thoại để tạo phản hồi. 'Tắt' sẽ không sử dụng lịch sử nào, 'Cửa sổ trượt' sẽ chỉ sử dụng một số lượng tin nhắn gần đây nhất dựa trên kích thước cửa sổ đã định.", # Mô tả chức năng của khung radio
+        key="context_management_mode" # Key để lưu giá trị đã chọn trong session_state
     )
     
-    # Sliding window turns input (only shown when sliding window mode is selected)
+    # Nếu chọn chế độ sliding window, hiển thị input để chọn số tin nhắn trong cửa sổ trượt
     if st.session_state.get("context_management_mode") == ContextManagementMode.SLIDING_WINDOW.value:
+        # Khởi tạo giá trị mặc định cho sliding_window_turns nếu chưa có trong session_state
         if "sliding_window_turns" not in st.session_state:
             st.session_state.sliding_window_turns = 2
+        # Input để chọn số tin nhắn trong cửa sổ trượt
         st.sidebar.number_input(
-            label="Số tin nhắn trong cửa sổ trượt",
-            min_value=1,
-            max_value=50,
-            value=st.session_state.sliding_window_turns,
-            step=1,
-            key="sliding_window_turns",
-            help="Số tin nhắn user-assistant được giữ lại trong cửa sổ trượt để cung cấp ngữ cảnh cho phản hồi. Ví dụ: nếu bạn đặt 3, chatbot sẽ sử dụng 3 tin nhắn gần nhất",
+            label="Số tin nhắn trong cửa sổ trượt", # Nhãn cho input
+            min_value=1, # Giá trị tối thiểu là 1
+            max_value=5, # Giá trị tối đa là 5 (có thể điều chỉnh tùy theo nhu cầu)
+            value=st.session_state.sliding_window_turns, # Giá trị mặc định lấy từ session_state
+            step=1, # Bước tăng giảm là 1
+            key="sliding_window_turns", # Key để lưu giá trị trong session_state
+            help="Số tin nhắn user-assistant được giữ lại trong cửa sổ trượt để cung cấp ngữ cảnh cho phản hồi. Ví dụ: nếu bạn đặt 3, chatbot sẽ sử dụng 3 tin nhắn gần nhất", # Mô tả chức năng của input
         )
     
-    # Callback: Auto-enable sliding window when tools are turned on
+    # Hàm callback để tự động bật chế độ quản lý ngữ cảnh khi bật công cụ
     def on_enable_tools_change():
         if st.session_state.enable_tools:
             st.session_state.context_management_mode = ContextManagementMode.SLIDING_WINDOW.value
     
-    # Tools toggle
+    # Nút gạc bật công cụ
     st.sidebar.toggle(
-        label="Sử dụng công cụ",
-        value=False,
-        key="enable_tools",
-        help="Bật nếu bạn muốn cho phép chatbot sử dụng các công cụ đã tích hợp (ví dụ: truy vấn cơ sở dữ liệu, gọi API, v.v.) để trả lời câu hỏi của người dùng. Nếu tắt, chatbot sẽ chỉ dựa vào kiến thức đã được huấn luyện mà không sử dụng công cụ bên ngoài nào.",
-        on_change=on_enable_tools_change,
+        label="Sử dụng công cụ", # Nhãn cho toggle
+        value=False, # Mặc định là tắt
+        key="enable_tools", # Key để lưu trạng thái toggle trong session_state
+        help="Bật nếu bạn muốn cho phép chatbot sử dụng các công cụ đã tích hợp (ví dụ: truy vấn cơ sở dữ liệu, gọi API, v.v.) để trả lời câu hỏi của người dùng. Nếu tắt, chatbot sẽ chỉ dựa vào kiến thức đã được huấn luyện mà không sử dụng công cụ bên ngoài nào.", # Mô tả chức năng của toggle
+        on_change=on_enable_tools_change, # Callback function để tự động bật chế độ quản lý ngữ cảnh khi bật công cụ
     )
     
-    # Update settings button
+    # Nút cập nhật cài đặt - khi click sẽ ghi log cấu hình mới và reset lịch sử chat
     if st.sidebar.button("Cập nhật cài đặt"):
-        # Ghi log cấu hình mới (dùng .format thay f-string)
-        global_logger.info("Settings updated: Selected provider: {}, model: {}, Temperature: {}, Max tokens: {}, Context Management Mode: {}, Tools enabled: {}".format(
-            st.session_state.get("selected_provider"),
-            st.session_state.get("selected_model"),
-            st.session_state.get("temperature"),
-            st.session_state.get("max_tokens"),
-            str(ContextManagementMode(st.session_state.get("context_management_mode"))),
-            st.session_state.get("enable_tools")
-        ))
-        # Reset chat history to apply new settings
-        st.session_state.chat_history = []
+        # Ghi log cấu hình mới
+        selected_provider = st.session_state.get("selected_provider")
+        selected_model = st.session_state.get("selected_model")
+        temperature = st.session_state.get("temperature")
+        max_tokens = st.session_state.get("max_tokens")
+        context_mode = ContextManagementMode(st.session_state.get("context_management_mode"))
+        tools_enabled = st.session_state.get("enable_tools")
+    
+        global_logger.info(f"Settings updated: Selected provider: {selected_provider}, model: {selected_model}, Temperature: {temperature}, Max tokens: {max_tokens}, Context Management Mode: {context_mode}, Tools enabled: {tools_enabled}")
+        
         st.sidebar.success("Đã cập nhật cấu hình!")
+        # Reset lịch sử chat
+        st.session_state.chat_history = []

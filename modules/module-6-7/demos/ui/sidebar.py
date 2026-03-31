@@ -161,15 +161,8 @@ def render_sidebar():
     
     # Update settings button
     if st.sidebar.button("Cập nhật cài đặt"):
-        # Ghi log cấu hình mới (dùng .format thay f-string)
-        global_logger.info("Settings updated: Selected provider: {}, model: {}, Temperature: {}, Max tokens: {}, Context Management Mode: {}, Tools enabled: {}".format(
-            st.session_state.get("selected_provider"),
-            st.session_state.get("selected_model"),
-            st.session_state.get("temperature"),
-            st.session_state.get("max_tokens"),
-            str(ContextManagementMode(st.session_state.get("context_management_mode"))),
-            st.session_state.get("enable_tools")
-        ))
+        # Ghi log cấu hình mới
+        global_logger.info(f"Settings updated: Selected provider: {st.session_state.get('selected_provider')}, model: {st.session_state.get('selected_model')}, Temperature: {st.session_state.get('temperature')}, Max tokens: {st.session_state.get('max_tokens')}, Context Management Mode: {str(ContextManagementMode(st.session_state.get('context_management_mode')))}, Tools enabled: {st.session_state.get('enable_tools')}")
         # Reset chat history to apply new settings
         st.session_state.chat_history = []
         st.sidebar.success("Đã cập nhật cấu hình!")

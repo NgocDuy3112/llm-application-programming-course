@@ -17,7 +17,7 @@ Usage:
 from custom_types import Provider
 
 
-# Mapping of providers to their available model identifiers
+# Bản đồ từ provider tới danh sách ID model có sẵn
 MODELS_BY_PROVIDER = {
     Provider.GROQ.value: [
         "openai/gpt-oss-20b",
@@ -25,8 +25,8 @@ MODELS_BY_PROVIDER = {
         "qwen/qwen3-32b"
     ],
     Provider.OLLAMA.value: [
-        "qwen3:0.6b-q4_K_M",      # 4-bit quantized (smaller, faster)
-        "qwen3:0.6b-q8_0",        # 8-bit quantized (balanced)
-        "qwen3:0.6b-fp16",        # Full 16-bit precision (highest quality)
+        "qwen3:0.6b-q4_K_M",      # Lượng tử hóa 4-bit (nhỏ gọn, nhanh hơn)
+        "qwen3:0.6b-q8_0",        # Lượng tử hóa 8-bit (cân bằng hiệu năng/độ chính xác)
+        "qwen3:0.6b-fp16",        # Độ chính xác 16-bit (chất lượng cao nhất)
     ],
 }

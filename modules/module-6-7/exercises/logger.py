@@ -155,5 +155,5 @@ class ChatbotLogger:
         self._logger.critical(message, *args, **kwargs)
 
 
-# Create default global_logger instance - được import và sử dụng khắp ứng dụng
+# Tạo instance `global_logger` mặc định — được import và sử dụng khắp ứng dụng
 global_logger = ChatbotLogger.get_logger()

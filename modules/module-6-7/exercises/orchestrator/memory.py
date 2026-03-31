@@ -9,87 +9,24 @@ Kiến trúc / Dependencies:
 - logger: Global logger để tracking memory operations
 - Được sử dụng bởi FullChatbotEngine để quản lý chat context
 
-Design Patterns:
-- Strategy Pattern: BaseMemory định nghĩa interface, WindowMemory implement strategy
-- Template Method: add(), add_tool_message() được kế thừa, get_messages() được override
+Design Notes:
+- Đây chỉ cung cấp một implementation `WindowMemory` (sliding window).
+
+Integration notes:
+- Ensure `get_messages()` returns the correct slice of `buffer` (2 * sliding_window_size)
+- Ensure `add()` and `add_tool_message()` produce messages in the expected shape for the adapter/engine
 
 Usage:
-    # Unlimited memory (keep all messages)
-    memory = BaseMemory()
-    
     # Sliding window (keep last k turns)
     memory = WindowMemory(sliding_window_size=5)
     memory.add("user", "Hello")
     messages = memory.get_messages()
 """
 
-from abc import ABC, abstractmethod
 from logger import global_logger
 
 
-class BaseMemory(ABC):
-    """
-    Abstract base class cho các memory management strategies.
-
-    Cung cấp interface thống nhất để lưu trữ và truy xuất chat history.
-    Các subclass implement chiến lược lấy messages khác nhau (all, sliding window).
-
-    Attributes:
-        buffer (list): Danh sách tất cả messages được lưu
-            Format: [{"role": str, "content": str, "tool_calls": list?}, ...]
-
-    Note:
-        - Buffer được copy khi khởi tạo để tránh side effects
-        - Tool calls được lưu trữ cùng assistant messages khi có
-    """
-
-    def __init__(self, memory: list | None = None):
-        """
-        Khởi tạo memory buffer.
-
-        Args:
-            memory (list | None): Initial messages để load vào buffer
-                - Nếu None: buffer rỗng
-                - Nếu list: copy các messages vào buffer
-        """
-        # Copy the list instead of direct reference to avoid duplicate appends
-        self.buffer = list(memory) if memory is not None else []
-
-    def add(self, role: str, content: str | None = None, tool_calls=None):
-        """
-        HƯỚNG DẪN: Thêm message mới vào memory.
-        - role: "user", "assistant", "system", hoặc "tool"
-        - content: Nội dung text
-        - tool_calls: Danh sách các tool calls (chỉ dành cho assistant role)
-        """
-        global_logger.debug(f"Adding message: role={role}, content={content}, tool_calls={tool_calls}")
-        # TODO: Triển khai logic lưu message vào self.buffer
-        pass
-
-    def add_tool_message(self, tool_call, content: str):
-        """
-        HƯỚNG DẪN: Lưu phản hồi của tool vào memory.
-        - tool_call_id: Phải khớp với 'id' của tool_call mà model đã yêu cầu.
-        - name: Tên của tool đã được gọi (để model đối chiếu).
-        - role: PHẢI là "tool" cho role của message này.
-        """
-        global_logger.debug(f"Adding tool message for {tool_call.function.name}")
-        # TODO: Triển khai logic lưu tool response vào self.buffer
-        pass
-
-    @abstractmethod
-    def get_messages(self) -> list:
-        """
-        Lấy messages theo strategy (all hoặc sliding window).
-
-        Returns:
-            list: List of message dicts ready to send to LLM API
-                Format: [{"role": str, "content": str}, ...]
-        """
-        pass
-
-
-class WindowMemory(BaseMemory):
+class WindowMemory:
     """
     Sliding window memory strategy - giữ k cặp messages gần nhất.
 
@@ -124,8 +61,43 @@ class WindowMemory(BaseMemory):
                 - N: giữ 2*N messages gần nhất
         """
         global_logger.debug(f"Initializing WindowMemory with sliding_window_size={sliding_window_size}")
-        super().__init__(memory=memory)
+        # Copy provided memory list (if any) to internal buffer
+        self.buffer = list(memory) if memory is not None else []
         self.sliding_window_size = sliding_window_size
+
+
+    def add(self, role: str, content: str | None = None, tool_calls=None):
+        """
+        Thêm message mới vào memory.
+
+        Args:
+            role (str): Role của message ('user', 'assistant', 'system', 'tool')
+            content (str | None): Nội dung text của message
+            tool_calls (list | None): Danh sách tool calls (cho assistant messages)
+        """
+        global_logger.debug(f"Adding message: role={role}, content={content}, tool_calls={tool_calls}")
+        msg = {"role": role, "content": content}
+        if tool_calls:
+            msg["tool_calls"] = tool_calls
+            global_logger.debug(f"Message includes {len(tool_calls)} tool calls")
+        self.buffer.append(msg)
+
+
+    def add_tool_message(self, tool_call, content: str):
+        """
+        Thêm tool call result message vào buffer.
+
+        Args:
+            tool_call: Tool call object với attributes `.id` và `.function.name`
+            content (str): Kết quả thực thi tool
+        """
+        global_logger.debug(f"Adding tool message for {tool_call.function.name}")
+        self.buffer.append({
+            "role": "tool",
+            "tool_call_id": tool_call.id,
+            "name": tool_call.function.name,
+            "content": str(content)
+        })
 
 
     def get_messages(self) -> list:

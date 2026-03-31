@@ -22,7 +22,7 @@ Cách chạy:
 import os
 import sys
 import streamlit as st
-# Add current directory to path for local imports
+# Thêm thư mục hiện tại vào PATH để import các module/các phần tử nội bộ
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from custom_types import Provider, ContextManagementMode
@@ -46,7 +46,7 @@ def get_memory(mode: ContextManagementMode):
          - SLIDING_WINDOW: Giữ lại k cặp messages gần nhất
 
    Returns:
-      BaseMemory | None: Memory object hoặc None nếu tắt
+      WindowMemory | None: Memory object hoặc None nếu tắt
 
    Raises:
       ValueError: Nếu mode không hợp lệ

@@ -73,27 +73,12 @@ def tavily_search(query: str) -> str:
     if not tavily_client:
         global_logger.error("Tavily client not initialized, API key missing")
         return "Error: Tavily client not initialized"
-    # GỢI Ý: Gọi Tavily API để tìm kiếm thông tin. Ví dụ mẫu (bỏ comment và điều chỉnh):
-    # try:
-    #     response = tavily_client.search(
-    #         query=query,
-    #         include_answer=True,
-    #         time_range="year",
-    #     )
-    #     if not response:
-    #         global_logger.warning("Tavily search returned no response")
-    #         return "No response from Tavily"
-    #     # Kết hợp answer và sources thành một chuỗi
-    #     answer = response.get("answer") or ""
-    #     for r in response.get("results", []):
-    #         answer += f"\n\nSource: {r.get('url')}\nTitle: {r.get('title')}"
-    #     global_logger.debug(f"Tavily search completed, length={len(answer)}")
-    #     return answer
-    # except Exception as e:
-    #     global_logger.error(f"Error calling Tavily: {e}")
-    #     return f"Error: {e}"
-    #
-    # LƯU Ý: Nếu bạn không muốn gọi API thực tế trong bài tập, bạn có thể trả về một mock string để kiểm thử.
+
+    # Implementation hint: call `tavily_client.search(...)`, extract `answer`
+    # and `results`, concatenate into a single string and return. Handle
+    # exceptions and return a user-friendly error string if needed.
+    # For exercises this function is left intentionally unimplemented so
+    # students can implement a real call or return a mocked string.
     pass
 
 
