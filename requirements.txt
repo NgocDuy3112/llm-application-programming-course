@@ -1,21 +1,7 @@
-# LLM APIs
+streamlit
 openai
-python-dotenv
+tavily-python
 
-# Tokenization
-tiktoken
-
-# Embeddings and ML
-sentence-transformers
-numpy
-scikit-learn
-
-# Data Processing
-pandas
-
-# Visualization
-matplotlib
-
-# Jupyter Notebook (nếu cần)
-jupyter
-ipykernel
+pydantic
+pydantic-settings
+PyYAML
