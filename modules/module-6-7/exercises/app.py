@@ -30,6 +30,11 @@ from custom_types import Provider, ContextManagementMode, MODELS_BY_PROVIDER
 from model.adapter import *
 from orchestrator.tools import *
 from orchestrator.memory import *
+
+from orchestrator.engine_simple import EngineSimple
+from orchestrator.engine_with_parameters import EngineWithParameters
+from orchestrator.engine_with_sliding_window import EngineWithSlidingWindowMemory
+from orchestrator.engine_with_funcion_calling import EngineWithFunctionCalling
 from orchestrator.engine_full import EngineFull
 
 from ui.sidebar import render_sidebar
@@ -96,7 +101,7 @@ def get_adapter(provider: Provider) -> BaseAdapter:
             raise ValueError(f"Không hỗ trợ nhà cung cấp {provider}")
 
 
-def get_chatbot_engine(provider: Provider) -> EngineFull:
+def get_chatbot_engine(provider: Provider):
     """
     Tạo và trả về chatbot engine với adapter và memory được cấu hình.
 
@@ -110,7 +115,7 @@ def get_chatbot_engine(provider: Provider) -> EngineFull:
     adapter = get_adapter(provider)
     memory = get_memory(st.session_state.get("context_management_mode", ContextManagementMode.OFF.value))
     global_logger.info(f"Chatbot engine created with adapter={adapter.__class__.__name__}, memory={memory.__class__.__name__ if memory else 'None'}")
-    return EngineFull(adapter=adapter, memory=memory)
+    return EngineWithParameters(adapter=adapter)
 
 
 def main():

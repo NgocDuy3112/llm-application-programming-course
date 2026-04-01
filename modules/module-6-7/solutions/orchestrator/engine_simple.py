@@ -4,6 +4,7 @@ import os
 from dotenv import load_dotenv
 # Import class GroqCloudAdapter từ module model/adapter.py
 from model.adapter import BaseAdapter
+from custom_types import ToolChoice
 
 
 # Load biến môi trường từ file .env
@@ -40,6 +41,8 @@ class EngineSimple:
         user_prompt: str,
         temperature: float = 0.7,
         max_tokens: int = 2048,
+        tools: list | None = None,
+        tool_choice: ToolChoice = ToolChoice.NONE,
     ):
         """
         Tạo phản hồi cho tin nhắn của người dùng.
@@ -66,6 +69,8 @@ class EngineSimple:
             messages=messages,
             temperature=temperature,
             max_tokens=max_tokens,
+            tools=tools,
+            tool_choice=tool_choice,
         )
         
         # Trích xuất nội dung từ response

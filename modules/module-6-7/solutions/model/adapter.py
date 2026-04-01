@@ -66,11 +66,10 @@ class BaseAdapter(ABC):
         self,
         model: str,
         messages: list,
-        tools: list,
-        tool_choice: ToolChoice,
-        temperature: float,
-        max_tokens: int,
-        **kwargs
+        temperature: float = 0.2,
+        max_tokens: int = 2048,
+        tools: list | None = None,
+        tool_choice: ToolChoice | None = ToolChoice.NONE,
     ):
         """
         Gọi LLM với messages và config.
@@ -105,7 +104,6 @@ class BaseAdapter(ABC):
             tool_choice=tool_choice_value,
             temperature=temperature,
             max_tokens=max_tokens,
-            **kwargs
         )
         return self.client.chat.completions.create(**params)
 

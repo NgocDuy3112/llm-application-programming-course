@@ -87,10 +87,10 @@ def render_chat_interface(engine: object):
                 model=st.session_state.selected_model,
                 user_prompt=user_input,
                 temperature=st.session_state.temperature,
-                tools=DEFAULT_TOOLS if st.session_state.enable_tools else None,
-                tool_choice=ToolChoice.AUTO if st.session_state.enable_tools else ToolChoice.NONE,
                 max_tokens=st.session_state.max_tokens,
-                system_prompt=st.session_state.system_prompt,
+                system_prompt=st.session_state.system_prompt if st.session_state.system_prompt else None,
+                # tools=DEFAULT_TOOLS if st.session_state.enable_tools else None,
+                # tool_choice=ToolChoice.AUTO if st.session_state.enable_tools else ToolChoice.NONE,
             )
 
         assistant_reply_clean = re.sub(r"<think>.*?</think>", "", assistant_reply, flags=re.DOTALL | re.IGNORECASE).strip()
