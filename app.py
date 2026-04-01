@@ -34,14 +34,14 @@ def get_memory(mode: ContextManagementMode):
     global_logger.debug(f"Creating memory with mode: {mode}")
     match mode:
         case ContextManagementMode.OFF.value:
-            global_logger.debug("Memory mode OFF - no history will be stored")
+            global_logger.debug("Chế độ quản lý ngữ cảnh: TẮT")
             return None
         case ContextManagementMode.SLIDING_WINDOW.value:
             window_size = st.session_state.get("sliding_window_turns", 5)
-            global_logger.debug(f"Memory mode SLIDING_WINDOW with {window_size} turns")
+            global_logger.debug(f"Chế độ quản lý ngữ cảnh: CỬA SỔ TRƯỢT, kích thước {window_size}")
             return SlidingWindowMemory(sliding_window_size=window_size)
         case _:
-            global_logger.error(f"Unsupported context management mode: {mode}")
+            global_logger.error(f"Chế độ quản lý ngữ cảnh không hợp lệ: {mode}")
             raise ValueError(f"Chế độ quản lý ngữ cảnh không hợp lệ: {mode}")
 
 

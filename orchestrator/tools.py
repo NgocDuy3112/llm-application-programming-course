@@ -33,6 +33,7 @@ def tavily_search(query: str) -> str:
 
 def get_current_date() -> str:
     """Trả về ngày hiện tại (YYYY-MM-DD)."""
+    return date.today().isoformat()
 
 
 

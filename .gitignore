@@ -9,6 +9,10 @@ data/
 *.docx
 *.pptx
 *.xlsx
+*.sh
+*cloud
+generate_exercise_doc.py
+Containerfile
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

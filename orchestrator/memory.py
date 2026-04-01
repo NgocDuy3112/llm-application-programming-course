@@ -10,7 +10,7 @@ class SlidingWindowMemory():
 
     def __init__(self, sliding_window_size: int | None = None):
         """Khởi tạo memory với sliding_window_size."""
-        global_logger.debug(f"Initializing SlidingWindowMemory with sliding_window_size={sliding_window_size}")
+        global_logger.debug(f"Khởi tạo SlidingWindowMemory với kích thước cửa sổ trượt là {sliding_window_size}")
         self.sliding_window_size = sliding_window_size
         self.buffer = []
 

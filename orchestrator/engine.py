@@ -18,11 +18,22 @@ class ChatbotEngine:
 
     def __init__(self, adapter: BaseAdapter, memory: SlidingWindowMemory):
         """Khởi tạo engine với adapter và memory."""
+        global_logger.debug(f"Khởi tạo ChatbotEngine với adapter={adapter.__class__.__name__ if adapter else 'None'} và memory={memory.__class__.__name__ if memory else 'None'}")
+        self.adapter = adapter
+        self.memory = memory
 
-    def response(self, model: str, user_prompt: str, system_prompt: str | None = None,
-                 tools: list | None = None, tool_choice: ToolChoice | None = ToolChoice.NONE,
-                 temperature: float | None = 0.2, max_tokens: int | None = 65536) -> str:
+    def response(
+        self, 
+        model: str, 
+        user_prompt: str, 
+        system_prompt: str | None = None,
+        tools: list | None = None, 
+        tool_choice: ToolChoice | None = ToolChoice.NONE,
+        temperature: float | None = 0.2, 
+        max_tokens: int | None = 65536
+    ) -> str:
         """Xử lý user prompt và trả về response từ LLM."""
+        global_logger.info(f"Xử lý input từ user: {user_prompt[:50]}...")
         # TODO(BT2): Xây dựng messages với system_prompt
         # Nếu system_prompt tồn tại, thêm vào đầu messages
         

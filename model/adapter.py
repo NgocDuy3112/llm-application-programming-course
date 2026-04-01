@@ -45,7 +45,7 @@ class GroqAdapter(BaseAdapter):
         # TODO(BT1-Groq): Tạo OpenAI client cho Groq API
         # - base_url="https://api.groq.com/openai/v1"
         # - api_key từ os.getenv("GROQ_API_KEY")
-        pass
+        global_logger.info("Khởi tạo Groq client...")
 
 
 class OllamaAdapter(BaseAdapter):
@@ -55,4 +55,4 @@ class OllamaAdapter(BaseAdapter):
         # TODO(BT1-Ollama): Tạo OpenAI client cho Ollama local
         # - base_url="http://localhost:11434/v1"
         # - api_key="ollama" (placeholder, không cần thật)
-        pass
+        global_logger.info("Khởi tạo Ollama client...")
