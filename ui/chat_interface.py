@@ -1,34 +1,3 @@
-"""
-Module 6-7 - Chat Interface
-
-Mô tả: Streamlit chat UI component cho demo chatbot. Component này xử lý:
-- Hiển thị chat history
-- Nhận user input
-- Gọi engine để lấy response
-- Xử lý reasoning blocks (<think>...</think>)
-
-Kiến trúc / Dependencies:
-- Streamlit: Web UI framework
-- FullChatbotEngine: Engine để xử lý user input và generate response
-- DEFAULT_TOOLS: Tool definitions cho function calling
-- ToolChoice: Enum cho tool usage mode
-
-UI Flow:
-1. Display existing chat history từ session_state
-2. Render chat input box
-3. Khi user gửi message:
-   a. Strip reasoning blocks khỏi UI view
-   b. Lưu vào chat_history
-   c. Gọi engine.response()
-   d. Strip reasoning blocks khỏi response
-   e. Lưu và hiển thị response
-   f. Rerun để update UI
-
-Usage:
-    from ui.chat_interface import render_chat_interface
-    render_chat_interface(engine=chatbot_engine)
-"""
-
 import re
 import streamlit as st
 
