@@ -55,9 +55,9 @@ def render_chat_interface(engine: object):
         - chat_history: List of {"role": str, "content": str} messages
         - selected_model: Model name/ID to use
         - temperature: Creativity level (0.0-1.0)
-        - max_tokens: Maximum tokens in response
+        - max_completion_tokens: Maximum tokens in response
         - enable_tools: Whether to enable function calling
-        - system_prompt: System system_prompt/prompt
+        - system_prompt: System prompt
 
     Note:
         - UI chỉ lưu cleaned content (không có reasoning blocks)
@@ -87,8 +87,11 @@ def render_chat_interface(engine: object):
             assistant_reply = engine.response(
                 model=st.session_state.selected_model,
                 user_prompt=user_input,
+                system_prompt=st.session_state.system_prompt,
                 temperature=st.session_state.temperature,
-                max_tokens=st.session_state.max_tokens,
+                max_completion_tokens=st.session_state.max_completion_tokens,
+                tools=DEFAULT_TOOLS if st.session_state.enable_tools else None,
+                tool_choice=ToolChoice.AUTO if st.session_state.enable_tools else ToolChoice.NONE,
             )
 
         assistant_reply_clean = re.sub(r"<think>.*?</think>", "", assistant_reply, flags=re.DOTALL | re.IGNORECASE).strip()

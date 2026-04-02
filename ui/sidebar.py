@@ -20,7 +20,7 @@ Session State Managed:
     - selected_provider: Provider name (groq, ollama)
     - selected_model: Model identifier
     - temperature: Float 0.0-1.0
-    - max_tokens: Integer 2048-131072
+    - max_completion_tokens: Integer 2048-131072
     - system_prompt: System prompt string
     - context_management_mode: Memory mode
     - sliding_window_turns: Number of turns for sliding window
@@ -96,17 +96,17 @@ def render_sidebar():
     )
 
     st.sidebar.number_input(
-        label="Độ dài tối đa của phản hồi (Max Output Tokens)",
+        label="Độ dài tối đa của phản hồi (Max Completion Tokens)",
         min_value=2048,
         max_value=131072,
-        value=16384,
+        value=5120,
         step=256,
         help="Giới hạn số token trong phản hồi của mô hình, bao gồm cả token suy luận nếu có",
-        key="max_tokens"
+        key="max_completion_tokens"
     )
 
     st.sidebar.text_area(
-        label="Câu lệnh hệ thống (System system_prompt)",
+        label="Câu lệnh hệ thống (System prompt)",
         height=200,
         placeholder="Bạn là một trợ lý hữu ích và thân thiện.",
         help="Câu lệnh hệ thống là một phần của prompt được gửi đến mô hình để hướng dẫn cách thức phản hồi. Bạn có thể sử dụng nó để thiết lập bối cảnh, vai trò của chatbot, hoặc bất kỳ hướng dẫn đặc biệt nào mà bạn muốn mô hình tuân theo khi tạo phản hồi.",
@@ -114,7 +114,7 @@ def render_sidebar():
     )
 
     st.sidebar.radio(
-        label="Chọn chế độ quản lý ngữ cảnh",
+        label="Chế độ quản lý ngữ cảnh",
         options=[
             ContextManagementMode.OFF.value,
             ContextManagementMode.SLIDING_WINDOW.value,
@@ -125,15 +125,15 @@ def render_sidebar():
     )
 
     if st.session_state.get("context_management_mode") == ContextManagementMode.SLIDING_WINDOW.value:
-        if "sliding_window_turns" not in st.session_state:
-            st.session_state.sliding_window_turns = 2
+        if "sliding_window_messages" not in st.session_state:
+            st.session_state.sliding_window_messages = 5
         st.sidebar.number_input(
             label="Số tin nhắn trong cửa sổ trượt",
             min_value=1,
             max_value=50,
-            value=st.session_state.sliding_window_turns,
+            value=st.session_state.sliding_window_messages,
             step=1,
-            key="sliding_window_turns",
+            key="sliding_window_messages",
             help="Số tin nhắn user-assistant được giữ lại trong cửa sổ trượt để cung cấp ngữ cảnh cho phản hồi. Ví dụ: nếu bạn đặt 3, chatbot sẽ sử dụng 3 tin nhắn gần nhất",
         )
 
@@ -145,6 +145,29 @@ def render_sidebar():
     )
 
     if st.sidebar.button("Cập nhật cài đặt"):
-        global_logger.info(f"Settings updated: Selected provider: {st.session_state.get('selected_provider')}, model: {st.session_state.get('selected_model')}, Temperature: {st.session_state.get('temperature')}, Max tokens: {st.session_state.get('max_tokens')}, Context Management Mode: {str(ContextManagementMode(st.session_state.get('context_management_mode')))}, Tools enabled: {st.session_state.get('enable_tools')}")
+        selected_provider = st.session_state.get("selected_provider")
+        selected_model = st.session_state.get("selected_model")
+        temperature = st.session_state.get("temperature")
+        max_tokens = st.session_state.get("max_completion_tokens")
+        context_mode = st.session_state.get("context_management_mode")
+        try:
+            context_mode_label = ContextManagementMode(context_mode).value
+        except Exception:
+            context_mode_label = str(context_mode)
+        tools_enabled = st.session_state.get("enable_tools")
+
+        global_logger.info(
+            "Cập nhật cấu hình:\n"
+            f"  - Nhà cung cấp: {selected_provider}\n"
+            f"  - Mô hình: {selected_model}\n"
+            f"  - Temperature: {temperature}\n"
+            f"  - Max Completion Tokens: {max_tokens}\n"
+            f"  - Chế độ quản lý ngữ cảnh: {context_mode_label}\n"
+            f"  - Sử dụng công cụ: {tools_enabled}"
+        )
+
         st.session_state.chat_history = []
+        # Xoá engine cũ để app.py tạo lại engine với cài đặt mới (provider, memory mode...)
+        if "chatbot_engine" in st.session_state:
+            del st.session_state.chatbot_engine
         st.sidebar.success("Đã cập nhật cấu hình!")

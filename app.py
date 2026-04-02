@@ -37,7 +37,7 @@ def get_memory(mode: ContextManagementMode):
             global_logger.debug("Chế độ quản lý ngữ cảnh: TẮT")
             return None
         case ContextManagementMode.SLIDING_WINDOW.value:
-            window_size = st.session_state.get("sliding_window_turns", 5)
+            window_size = st.session_state.get("sliding_window_messages", 5)
             global_logger.debug(f"Chế độ quản lý ngữ cảnh: CỬA SỔ TRƯỢT, kích thước {window_size}")
             return SlidingWindowMemory(sliding_window_size=window_size)
         case _:
@@ -88,7 +88,7 @@ def get_chatbot_engine(provider: Provider):
     """
     global_logger.debug(f"Creating chatbot engine for provider: {provider}")
     adapter = get_adapter(provider)
-    memory = get_memory(st.session_state.get("context_management_mode", ContextManagementMode.OFF.value))
+    memory = get_memory(st.session_state.get("context_management_mode"))
     global_logger.info(f"Chatbot engine created with adapter={adapter.__class__.__name__}, memory={memory.__class__.__name__ if memory else 'None'}")
     return ChatbotEngine(adapter=adapter, memory=memory)
 
@@ -109,8 +109,13 @@ def main():
         st.session_state.selected_provider = Provider.GROQ.value
     if "selected_model" not in st.session_state:
         st.session_state.selected_model = MODELS_BY_PROVIDER[Provider.GROQ.value][0]
-
-    engine = get_chatbot_engine(Provider(st.session_state.selected_provider))
+    if "context_management_mode" not in st.session_state:
+        st.session_state.context_management_mode = ContextManagementMode.OFF.value
+    if "chatbot_engine" not in st.session_state:
+        st.session_state.chatbot_engine = get_chatbot_engine(
+            Provider(st.session_state.selected_provider)
+        )
+    engine = st.session_state.chatbot_engine
 
     render_sidebar()
     render_chat_interface(engine=engine)

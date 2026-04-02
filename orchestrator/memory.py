@@ -14,7 +14,7 @@ class SlidingWindowMemory():
         self.sliding_window_size = sliding_window_size
         self.buffer = []
 
-    def add(self, message: dict):
+    def add_message(self, message: dict):
         """Thêm message vào buffer."""
         # TODO: Thêm message vào buffer
         pass
