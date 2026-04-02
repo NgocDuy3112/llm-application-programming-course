@@ -1,37 +1,3 @@
-"""
-Module 6-7 - Sidebar UI (Solution)
-
-Mô tả: Streamlit sidebar component cho chatbot demo. Sidebar này cung cấp
-các controls để cấu hình:
-- LLM provider (Groq, Ollama)
-- Model selection
-- Temperature (creativity level)
-- Max output tokens
-- System system_prompt
-- Context management mode (off, sliding window)
-- Tool usage toggle
-
-Kiến trúc / Dependencies:
-- Streamlit: Web UI framework
-- custom_types: Provider, ContextManagementMode enums
-- constants: MODELS_BY_PROVIDER mapping
-
-Session State Managed:
-    - selected_provider: Provider name (groq, ollama)
-    - selected_model: Model identifier
-    - temperature: Float 0.0-1.0
-    - max_completion_tokens: Integer 2048-131072
-    - system_prompt: System prompt string
-    - context_management_mode: Memory mode
-    - sliding_window_turns: Number of turns for sliding window
-    - enable_tools: Boolean for tool usage
-    - chat_history: Reset when settings updated
-
-Usage:
-    from ui.sidebar import render_sidebar
-    render_sidebar()
-"""
-
 import streamlit as st
 from logger import global_logger
 from custom_types import Provider, ContextManagementMode
