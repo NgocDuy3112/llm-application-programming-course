@@ -1,3 +1,28 @@
+"""
+Module 6-7 - Memory Management
+
+Mô tả: Quản lý lịch sử cuộc trò chuyện với hỗ trợ multiple memory strategies:
+- None: Lưu tất cả messages (unlimited context)
+- Sliding Window (k): Giữ k cặp messages gần nhất để hạn chế context length
+
+Kiến trúc / Dependencies:
+- logger: Global logger để tracking memory operations
+- Được sử dụng bởi FullChatbotEngine để quản lý chat context
+
+Design Notes:
+- Đây chỉ cung cấp một implementation `WindowMemory` (sliding window).
+
+Integration notes:
+- Ensure `get_messages()` returns the correct slice of `buffer` (2 * sliding_window_size)
+- Ensure `add()` and `add_tool_message()` produce messages in the expected shape for the adapter/engine
+
+Usage:
+    # Sliding window (keep last k turns)
+    memory = WindowMemory(sliding_window_size=5)
+    memory.add("user", "Hello")
+    messages = memory.get_messages()
+"""
+
 from logger import global_logger
 
 

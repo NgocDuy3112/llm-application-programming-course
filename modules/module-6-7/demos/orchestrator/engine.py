@@ -82,7 +82,7 @@ class FullChatbotEngine:
         input: str,
         tools: list | None = None,
         tool_choice: ToolChoice = ToolChoice.NONE,
-        instruction: str | None = None,
+        system_prompt: str | None = None,
         temperature: float = 0.2,
         max_tokens: int = 65536,
         **kwargs
@@ -99,7 +99,7 @@ class FullChatbotEngine:
             input (str): User's input message
             tools (list | None): Tool definitions for function calling
             tool_choice (ToolChoice): Tool usage mode (NONE or AUTO)
-            instruction (str | None): System instruction/prompt
+            system_prompt (str | None): System system_prompt/prompt
             temperature (float): Creativity level (0.0-1.0)
             max_tokens (int): Maximum tokens in response
             **kwargs: Additional params passed to adapter
@@ -113,7 +113,7 @@ class FullChatbotEngine:
             - Reasoning content (<think>...</think>) được tách riêng, không hiển thị
         """
         global_logger.info(f"Processing user input: {input[:50]}...")
-        system_message = {"role": "system", "content": instruction if instruction else ""}
+        system_message = {"role": "system", "content": system_prompt if system_prompt else ""}
         tools = tools if tool_choice != ToolChoice.NONE else None
         # Optional flag to control streaming-style output in adapters
         streaming_output = kwargs.pop("streaming_output", False)
@@ -127,33 +127,38 @@ class FullChatbotEngine:
         if self.memory is not None:
             self.memory.add(role="user", content=input)
 
+        # messages sẽ được build từ memory ở iteration đầu tiên
+        # các iteration sau (có tool responses) sẽ reuse messages list
+        messages = None
+
         # Main tool-calling loop: keep executing until no more tool calls
         while True:
-            # Build messages list for LLM API
-            if self.memory is not None:
-                # Sanitize memory messages before sending to the API — only role and content allowed
-                raw_messages = self.memory.get_messages()
+            # Build messages từ memory (chỉ ở iteration đầu tiên)
+            if messages is None:
+                if self.memory is not None:
+                    # Sanitize memory messages before sending to the API — only role and content allowed
+                    raw_messages = self.memory.get_messages()
 
-                # Simplified sanitization: repo invariant là raw_messages đều là dict
-                # Chỉ giữ các trường cần thiết (role, content) và optional tool fields
-                def _sanitize_dict(message: dict) -> dict:
-                    role = message.get("role")
-                    content = message.get("content") or ""
-                    msg = {"role": role, "content": content}
-                    if role == "tool":
-                        msg["tool_call_id"] = message["tool_call_id"]
-                        msg["name"] = message["name"]
-                    return msg
+                    # Simplified sanitization: repo invariant là raw_messages đều là dict
+                    # Chỉ giữ các trường cần thiết (role, content) và optional tool fields
+                    def _sanitize_dict(message: dict) -> dict:
+                        role = message.get("role")
+                        content = message.get("content") or ""
+                        msg = {"role": role, "content": content}
+                        if role == "tool":
+                            msg["tool_call_id"] = message["tool_call_id"]
+                            msg["name"] = message["name"]
+                        return msg
 
-                sanitized = [_sanitize_dict(message) for message in raw_messages]
-                messages = [system_message] + sanitized
-                # Replace the last user message content with masked version for LLM
-                if messages and messages[-1].get("role") == "user":
-                    messages[-1] = {"role": "user", "content": llm_input}
-            else:
-                # No memory mode: just system + current user message
-                user_message = {"role": "user", "content": llm_input}
-                messages = [system_message, user_message]
+                    sanitized = [_sanitize_dict(message) for message in raw_messages]
+                    messages = [system_message] + sanitized
+                    # Replace the last user message content with masked version for LLM
+                    if messages and messages[-1].get("role") == "user":
+                        messages[-1] = {"role": "user", "content": llm_input}
+                else:
+                    # No memory mode: just system + current user message
+                    user_message = {"role": "user", "content": llm_input}
+                    messages = [system_message, user_message]
 
             # Call LLM via adapter
             response = self.adapter.response(
@@ -183,11 +188,17 @@ class FullChatbotEngine:
             if self.memory is not None:
                 self.memory.add(role="assistant", content=last_message.content, tool_calls=last_message.tool_calls)
 
-            # Execute each tool call
+            # Append assistant message với tool calls vào messages list
+            messages.append({
+                "role": "assistant",
+                "content": last_message.content,
+                "tool_calls": last_message.tool_calls
+            })
+
+            # Execute each tool call và append tool responses vào messages (KHÔNG lưu vào memory)
             for tool_call in last_message.tool_calls:
                 tool_name = tool_call.function.name
                 global_logger.debug(f"Executing tool: {tool_name}")
-
                 # Parse tool arguments from JSON string
                 try:
                     tool_args = json.loads(tool_call.function.arguments) or {}
@@ -206,6 +217,12 @@ class FullChatbotEngine:
                     global_logger.warning(f"Unknown tool: {tool_name}")
                     tool_response = f"Unknown tool: {tool_name}"
 
-                # Add tool response to memory for next LLM iteration
-                if self.memory is not None:
-                    self.memory.add_tool_message(tool_call, tool_response)
+                # Append tool response vào messages (không lưu vào memory)
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "name": tool_call.function.name,
+                    "content": str(tool_response)
+                })
+
+            # Continue loop - messages đã có tool responses, không rebuild từ memory

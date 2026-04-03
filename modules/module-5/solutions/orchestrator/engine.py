@@ -41,9 +41,9 @@ class ChatbotEngine:
     def response(
         self,
         model: str,
-        input: str,
-        temperature: float,
-        max_tokens: int,
+        user_prompt: str,
+        temperature: float = 0.7,
+        max_tokens: int = 2048,
         **kwargs
     ):
         """
@@ -51,7 +51,7 @@ class ChatbotEngine:
         
         Args:
             model: Tên model sử dụng (VD: "openai/gpt-oss-20b")
-            input: Tin nhắn của người dùng
+            user_prompt: Tin nhắn của người dùng
             temperature: Độ sáng tạo (0.0 - 1.0)
             max_tokens: Số token tối đa trong phản hồi
             **kwargs: Các tham số bổ sung cho API
@@ -60,8 +60,8 @@ class ChatbotEngine:
             str: Nội dung phản hồi từ AI
         """
         # Định dạng tin nhắn theo format OpenAI API
-        # Tạo list chứa một message với role "user" và content là input
-        user_message = [{"role": "user", "content": input}]
+        # Tạo list chứa một message với role "user" và content là user_prompt
+        user_message = [{"role": "user", "content": user_prompt}]
         
         # Gọi API thông qua adapter
         # Truyền các tham số cần thiết cho việc tạo phản hồi
@@ -77,39 +77,3 @@ class ChatbotEngine:
         # response.choices[0]: lấy completion option đầu tiên
         # .message.content: lấy nội dung text của message
         return response.choices[0].message.content
-
-
-class FakeChatbotEngine:
-    """
-    Engine giả định để test UI mà không cần kết nối API.
-    
-    Class này hữu ích khi:
-    1. Phát triển UI mà chưa có API key
-    2. Test giao diện mà không tốn quota API
-    3. Demo tính năng cho khách hàng
-    """
-    
-    def response(
-        self,
-        model: str,
-        input: str,
-        temperature: float,
-        max_tokens: int,
-        **kwargs
-    ):
-        """
-        Tạo phản hồi giả định cho mục đích test.
-        
-        Args:
-            model: Tên model (không sử dụng)
-            input: Tin nhắn của người dùng
-            temperature: Độ sáng tạo (không sử dụng)
-            max_tokens: Số token tối đa (không sử dụng)
-            **kwargs: Các tham số khác (không sử dụng)
-            
-        Returns:
-            str: Phản hồi giả định chứa thông tin request
-        """
-        # Trả về string giả định chứa thông tin về các tham số đã nhận
-        # f-string: format string với các giá trị truyền vào
-        return f"Đây là phản hồi giả cho tin nhắn: '{input}' (model: {model}, temperature: {temperature}, max_tokens: {max_tokens}), các tham số khác: {kwargs})"

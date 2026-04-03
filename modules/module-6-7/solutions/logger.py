@@ -1,8 +1,8 @@
 """
-Module 6-7 - Exercises Logger
+Module 6-7 - Solutions Logger
 
-Mô tả: Logger implementation cho exercises folder. Đây là bản sao từ
-demos/logger.py, được cung cấp sẵn để sinh viên sử dụng trong bài tập.
+Mô tả: Logger implementation cho solutions folder. Đây là bản sao từ
+demos/logger.py, được cung cấp sẵn để sử dụng trong solutions.
 
 Mô tả chi tiết: Triển khai logging system cho ứng dụng chatbot với:
 - Console handler: Hiển thị logs từ INFO level trở lên
@@ -15,7 +15,7 @@ Kiến trúc / Design Patterns:
 - Rotation: Tự động xoay log file khi đạt 5MB, giữ tối đa 5 backups
 
 Usage:
-    from exercises.logger import global_logger
+    from solutions.logger import global_logger
     global_logger.info("User logged in")
     global_logger.error("API call failed")
 """
@@ -74,35 +74,28 @@ class ChatbotLogger:
         4. Formatter: timestamp - name - level - message
         """
         self._logger = logging.getLogger(self.name)
-        self._logger.setLevel(logging.DEBUG)  # Set to DEBUG to capture all levels
+        self._logger.setLevel(logging.DEBUG)
 
-        # Avoid duplicate handlers (important for singleton pattern)
         if self._logger.handlers:
             return
 
-        # Console handler (INFO level and above)
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setLevel(self.level)
 
-        # Create logs directory if it doesn't exist
         try:
             self.log_dir.mkdir(parents=True, exist_ok=True)
         except Exception:
-            # Fallback to current directory if we cannot create the logs directory
             self.log_dir = Path('.')
 
-        # File handler with rotation (DEBUG level and above)
-        # Filename format: chatbot_YYYYMMDD.log (new file each day)
         log_file = self.log_dir / f"chatbot_{datetime.now().strftime('%Y%m%d')}.log"
         file_handler = RotatingFileHandler(
             str(log_file),
-            maxBytes=5_000_000,  # 5MB per file
-            backupCount=5,       # Keep 5 backup files
+            maxBytes=5_000_000,
+            backupCount=5,
             encoding='utf-8'
         )
         file_handler.setLevel(logging.DEBUG)
 
-        # Formatter: timestamp - logger name - level - message
         formatter = logging.Formatter(
             '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
             datefmt='%Y-%m-%d %H:%M:%S'
@@ -155,5 +148,4 @@ class ChatbotLogger:
         self._logger.critical(message, *args, **kwargs)
 
 
-# Tạo instance `global_logger` mặc định — được import và sử dụng khắp ứng dụng
 global_logger = ChatbotLogger.get_logger()

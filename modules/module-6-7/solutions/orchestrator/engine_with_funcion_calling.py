@@ -2,11 +2,10 @@ import json
 
 from logger import global_logger
 from orchestrator.tools import *
-from orchestrator.memory import *
 from model.adapter import *
 
 
-class FullChatbotEngine:
+class EngineWithFunctionCalling:
     """
     Chatbot engine orchestrator - quản lý luồng hội thoại và tool execution.
 
@@ -19,28 +18,29 @@ class FullChatbotEngine:
         memory (WindowMemory | None): Memory manager instance
 
     Example:
-        >>> engine = ChatbotEngine(
+        >>> engine = EngineWithFunctionCalling(
         ...     adapter=GroqAdapter()
         ... )
         >>> response = engine.response(
         ...     model="qwen/qwen3-32b",
-        ...     user_prompt="What's the weather today?",
+        ...     input="What's the weather today?",
         ...     tools=DEFAULT_TOOLS,
         ...     tool_choice=ToolChoice.AUTO
         ... )
     """
 
-    def __init__(self, adapter: BaseAdapter, memory: SlidingWindowMemory):
+    def __init__(self, adapter: BaseAdapter | None = None):
         """
         Khởi tạo engine với adapter và memory.
 
         Args:
             adapter (BaseAdapter | None): LLM adapter instance
                 - Nếu có thì dùng cái này thay vì tạo từ provider
+            memory (WindowMemory | None): Memory manager instance
+                - Nếu None thì không lưu lịch sử hội thoại
         """
-        global_logger.debug(f"Initializing ChatbotEngine with adapter={adapter.__class__.__name__}")
+        global_logger.debug(f"Initializing EngineWithSlidingWindowMemory with adapter={adapter.__class__.__name__}")
         self.adapter = adapter
-        self.memory = memory
 
     def response(
         self,
@@ -58,11 +58,10 @@ class FullChatbotEngine:
         tools = tools if tool_choice != ToolChoice.NONE else None
         messages = None
         user_message = {"role": "user", "content": user_prompt}
-        self.memory.add(user_message)
         if system_prompt:
-            messages = [system_message] + self.memory.get_messages()
+            messages = [system_message, user_message]
         else:
-            messages = self.memory.get_messages()
+            messages = [user_message]
 
         while True:
             # Gọi LLM
@@ -80,13 +79,13 @@ class FullChatbotEngine:
             # Nếu không có tool calls: lưu assistant response vào memory và trả về
             if not last_message.tool_calls:
                 global_logger.debug(f"No tool calls, returning assistant response")
-                assistant_message = {"role": "assistant", "content": last_message.content}
-                self.memory.add(assistant_message)
-                return last_message.content
+                text = last_message.content
+                return text
 
             # Có tool calls:
             global_logger.debug(f"Tool calls detected: {[tc.function.name for tc in last_message.tool_calls]}")
-            
+
+            # Append assistant message với tool calls vào messages list
             messages.append({
                 "role": "assistant",
                 "content": last_message.content,
@@ -96,22 +95,9 @@ class FullChatbotEngine:
             # Thực thi tools và append tool responses vào messages (KHÔNG lưu vào memory)
             for tool_call in last_message.tool_calls:
                 tool_name = tool_call.function.name
-                global_logger.debug(f"Executing tool: {tool_name}")
-                try:
-                    tool_args = json.loads(tool_call.function.arguments) or {}
-                except:
-                    tool_args = {}
-
-                if tool_name in AVAILABLE_FUNCTIONS:
-                    try:
-                        global_logger.debug(f"Calling {tool_name} with args: {tool_args}")
-                        tool_response = AVAILABLE_FUNCTIONS[tool_name](**tool_args)
-                    except Exception as e:
-                        global_logger.error(f"Error executing {tool_name}: {str(e)}")
-                        tool_response = f"Error executing {tool_name}: {str(e)}"
-                else:
-                    global_logger.warning(f"Unknown tool: {tool_name}")
-                    tool_response = f"Unknown tool: {tool_name}"
+                tool_args = json.loads(tool_call.function.arguments)
+                global_logger.debug(f"Calling {tool_name} with args: {tool_args}")
+                tool_response = AVAILABLE_FUNCTIONS[tool_name](**tool_args)
 
                 # Append tool response vào messages (không lưu vào memory)
                 messages.append({

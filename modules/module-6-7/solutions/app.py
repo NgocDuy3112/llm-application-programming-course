@@ -65,7 +65,6 @@ def get_memory(mode: ContextManagementMode):
             raise ValueError(f"Chế độ quản lý ngữ cảnh không hợp lệ: {mode}")
 
 
-
 @st.cache_resource(show_spinner=True)
 def get_adapter(provider: Provider) -> BaseAdapter:
     """

@@ -70,58 +70,41 @@ def render_chat_interface(engine: object):
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
-    # Display existing messages from session_state
     with st.container():
         for entry in st.session_state.chat_history:
             st.chat_message(entry["role"]).markdown(entry["content"])
         global_logger.debug(f"Displayed {len(st.session_state.chat_history)} messages from chat history")
 
-    # Render chat input box
     user_input = st.chat_input("Nhập tin nhắn của bạn ở đây...", key="chat_input")
     if user_input:
-        # Prevent duplicate processing on Streamlit rerun
-        if st.session_state.get("_last_handled_input") == user_input:
-            global_logger.debug("Duplicate chat_input detected on rerun; ignoring")
-            return
-        st.session_state["_last_handled_input"] = user_input
-
-        # Strip any internal reasoning blocks from UI view
-        # This removes <think>...</think> tags while keeping the visible response
-        cleaned_input = re.sub(r"<think>.*?</think>", "", user_input, flags=re.DOTALL | re.IGNORECASE).strip()
-        visible_user_msg = cleaned_input if cleaned_input else "[Phần suy nghĩ nội bộ đã được tách ra]"
-
-        global_logger.debug(f"Processing user input: {visible_user_msg[:50]}...")
+        global_logger.debug(f"Processing user input: {user_input[:50]}...")
         with st.chat_message("user"):
-            st.markdown(visible_user_msg)
+            st.markdown(user_input)
 
-        # Only append to UI chat_history; engine.memory handles its own buffer
-        st.session_state.chat_history.append({"role": "user", "content": visible_user_msg})
+        st.session_state.chat_history.append({"role": "user", "content": user_input})
 
-        # Send cleaned input (without <think> blocks) to the model
         with st.spinner("Đang suy nghĩ..."):
             assistant_reply = engine.response(
                 model=st.session_state.selected_model,
-                input=cleaned_input,
+                user_prompt=user_input,
                 temperature=st.session_state.temperature,
                 tools=DEFAULT_TOOLS if st.session_state.enable_tools else None,
                 tool_choice=ToolChoice.AUTO if st.session_state.enable_tools else ToolChoice.NONE,
                 max_tokens=st.session_state.max_tokens,
                 system_prompt=st.session_state.system_prompt,
             )
-            # st.markdown(type(assistant_reply))
 
-        # Remove any <think> blocks from the assistant's reply before displaying
         assistant_reply_clean = re.sub(r"<think>.*?</think>", "", assistant_reply, flags=re.DOTALL | re.IGNORECASE).strip()
 
         global_logger.debug(f"Assistant reply generated, length: {len(assistant_reply_clean)}")
 
-        # Only append to UI chat_history; engine.memory handles its own buffer
         st.session_state.chat_history.append({
             "role": "assistant",
             "content": assistant_reply_clean,
         })
 
         global_logger.debug(f"Updated chat history, total messages: {len(st.session_state.chat_history)}")
-        # Do not modify `st.session_state['chat_input']` (widget-backed key).
-        # Use `_last_handled_input` to detect duplicates across reruns.
+        # Do not modify `st.session_state['chat_input']` (Streamlit forbids changing
+        # a widget-backed key after the widget is created). We use `_last_handled_input`
+        # to detect duplicates instead. Now re-run to refresh the UI.
         st.rerun()

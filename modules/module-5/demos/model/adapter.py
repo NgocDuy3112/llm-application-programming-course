@@ -92,8 +92,6 @@ class GroqCloudAdapter:
         self,
         model: str,
         messages: list,
-        temperature: float,
-        max_tokens: int,
         **kwargs
     ) -> object:
         """
@@ -102,15 +100,12 @@ class GroqCloudAdapter:
         Args:
             model: Tên model sử dụng (VD: "openai/gpt-oss-20b", "llama3-8b-8192")
             messages: Danh sách tin nhắn theo format OpenAI
-                     [{"role": "user"|"assistant"|"system", "content": "..."}]
-            temperature: Độ sáng tạo (0.0 - 1.0)
-                        0.0 = xác định nhất, 1.0 = sáng tạo nhất
-            max_tokens: Số token tối đa trong phản hồi
-            **kwargs: Các tham số bổ sung (top_p, stream, etc.)
+                    [{"role": "user"|"assistant"|"system", "content": "..."}]
+            **kwargs: Các tham số bổ sung (temperature, max_tokens, top_p, stream, etc.)
 
         Returns:
             object: Response object từ OpenAI API
-                   Thường có structure: response.choices[0].message.content
+                Thường có structure: response.choices[0].message.content
 
         Example:
             >>> response = adapter.response(
@@ -132,7 +127,5 @@ class GroqCloudAdapter:
         return self.client.chat.completions.create(
             model=model,
             messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
             **kwargs
         )
