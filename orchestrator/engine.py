@@ -37,7 +37,7 @@ class ChatbotEngine:
         # TODO(BT2): Xây dựng messages với system_prompt
         # Nếu system_prompt tồn tại, thêm vào đầu messages
         
-        # TODO(BT3b): Tích hợp SlidingWindowMemory
+        # TODO(BT3b): Tích hợp cữa số ngữ cảnh
         # 1. Thêm user_message vào memory
         # 2. Lấy messages từ memory để gửi cho LLM
         
@@ -47,8 +47,8 @@ class ChatbotEngine:
         # 3. Gọi lại LLM với messages mới
         
         # TODO(BT5): Hoàn thiện vòng lặp Function Calling
-        # 1. Giới hạn max_iterations ≤ 8
-        # 2. Sau vòng lặp, chỉ lưu final assistant message vào memory
+        # 1. Giới hạn số lần gọi Function Calling không vượt qúa 8
+        # 2. Sau vòng lặp, chỉ lưu tin nhắn assistant message vào memory
         
         user_message = {"role": "user", "content": user_prompt}
         messages = [user_prompt]
