@@ -35,7 +35,7 @@ def get_memory(mode: ContextManagementMode):
             return None
         case ContextManagementMode.SLIDING_WINDOW.value:
             window_size = st.session_state.get("sliding_window_turns", 5)
-            return WindowMemory(
+            return SlidingWindowMemory(
                 memory=st.session_state.get("chat_history", []),
                 sliding_window_size=window_size
             )
