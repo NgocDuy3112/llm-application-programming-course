@@ -16,10 +16,10 @@ class SlidingWindowMemory():
 
     def add_message(self, message: dict):
         """Thêm message vào buffer."""
-        # TODO: Thêm message vào buffer
+        # TODO(BT3a): Thêm message vào buffer
         pass
 
     def get_messages(self) -> list:
         """Trả về messages theo sliding window strategy."""
-        # TODO: Trả về messages theo sliding window
+        # TODO(BT3b): Trả về messages theo sliding window
         pass

@@ -87,11 +87,8 @@ def render_chat_interface(engine: object):
             assistant_reply = engine.response(
                 model=st.session_state.selected_model,
                 user_prompt=user_input,
-                system_prompt=st.session_state.system_prompt,
-                temperature=st.session_state.temperature,
-                max_completion_tokens=st.session_state.max_completion_tokens,
-                tools=DEFAULT_TOOLS if st.session_state.enable_tools else None,
-                tool_choice=ToolChoice.AUTO if st.session_state.enable_tools else ToolChoice.NONE,
+                # TODO(BT2b): Truyền system_prompt, temperature, max_tokens nếu có
+                # TODO(BT4c): Truyền tool_choice và tools nếu enable_tools=True
             )
 
         assistant_reply_clean = re.sub(r"<think>.*?</think>", "", assistant_reply, flags=re.DOTALL | re.IGNORECASE).strip()

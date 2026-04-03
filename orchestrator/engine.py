@@ -34,10 +34,10 @@ class ChatbotEngine:
     ) -> str:
         """Xử lý user prompt và trả về response từ LLM."""
         global_logger.info(f"Xử lý input từ user: {user_prompt[:50]}...")
-        # TODO(BT2): Xây dựng messages với system_prompt
+        # TODO(BT2a): Xây dựng messages với system_prompt
         # Nếu system_prompt tồn tại, thêm vào đầu messages
         
-        # TODO(BT3b): Tích hợp SlidingWindowMemory
+        # TODO(BT3c): Tích hợp SlidingWindowMemory
         # 1. Thêm user_message vào memory
         # 2. Lấy messages từ memory để gửi cho LLM
         
