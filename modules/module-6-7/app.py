@@ -1,24 +1,3 @@
-"""
-Module 6-7 - Main Chatbot Application (Solution)
-
-Mô tả: Streamlit application chính cho demo chatbot. Ứng dụng này tích hợp
-các thành phần:
-- UI components (sidebar, chat interface)
-- Model adapters (Groq, Ollama)
-- Memory management (sliding window, unlimited)
-- Tool orchestration
-
-Kiến trúc / Dependencies:
-- Streamlit: Web UI framework
-- model.adapter: LLM providers abstraction
-- orchestrator.engine: Chat processing logic
-- orchestrator.memory: Context management
-- ui.*: User interface components
-
-Cách chạy:
-   streamlit run solutions/app.py
-"""
-
 import os
 import sys
 import streamlit as st
@@ -52,18 +31,19 @@ def get_memory(mode: ContextManagementMode):
     Raises:
         ValueError: Nếu mode không hợp lệ
     """
-    global_logger.debug(f"Tạo memory với mode: {mode}")
+    global_logger.debug(f"Creating memory with mode: {mode}")
     match mode:
         case ContextManagementMode.OFF.value:
-            global_logger.debug("Memory mode OFF - không lưu lịch sử")
+            global_logger.debug("Chế độ quản lý ngữ cảnh: TẮT")
             return None
         case ContextManagementMode.SLIDING_WINDOW.value:
-            window_size = st.session_state.get("sliding_window_turns", 5)
-            global_logger.debug(f"Memory mode SLIDING_WINDOW với {window_size} turns")
+            window_size = st.session_state.get("sliding_window_messages", 5)
+            global_logger.debug(f"Chế độ quản lý ngữ cảnh: CỬA SỔ TRƯỢT, kích thước {window_size}")
             return SlidingWindowMemory(sliding_window_size=window_size)
         case _:
-            global_logger.error(f"Context management mode không hỗ trợ: {mode}")
+            global_logger.error(f"Chế độ quản lý ngữ cảnh không hợp lệ: {mode}")
             raise ValueError(f"Chế độ quản lý ngữ cảnh không hợp lệ: {mode}")
+
 
 
 @st.cache_resource(show_spinner=True)
@@ -83,16 +63,16 @@ def get_adapter(provider: Provider) -> BaseAdapter:
     Raises:
         ValueError: Nếu provider không được hỗ trợ
     """
-    global_logger.debug(f"Tạo adapter cho provider: {provider}")
+    global_logger.debug(f"Creating adapter for provider: {provider}")
     match provider:
         case Provider.GROQ:
-            global_logger.info("Sử dụng Groq adapter cho cloud inference")
+            global_logger.info("Using Groq adapter for cloud-based inference")
             return GroqAdapter()
         case Provider.OLLAMA:
-            global_logger.info("Sử dụng Ollama adapter cho local inference")
+            global_logger.info("Using Ollama adapter for local inference")
             return OllamaAdapter()
         case _:
-            global_logger.error(f"Provider không hỗ trợ: {provider}")
+            global_logger.error(f"Unsupported provider: {provider}")
             raise ValueError(f"Không hỗ trợ nhà cung cấp {provider}")
 
 
@@ -106,10 +86,10 @@ def get_chatbot_engine(provider: Provider):
     Returns:
         EngineFull: Engine đã được cấu hình đầy đủ
     """
-    global_logger.debug(f"Tạo chatbot engine cho provider: {provider}")
+    global_logger.debug(f"Creating chatbot engine for provider: {provider}")
     adapter = get_adapter(provider)
-    memory = get_memory(st.session_state.get("context_management_mode", ContextManagementMode.OFF.value))
-    global_logger.info(f"Chatbot engine được tạo với adapter={adapter.__class__.__name__}, memory={memory.__class__.__name__ if memory else 'None'}")
+    memory = get_memory(st.session_state.get("context_management_mode"))
+    global_logger.info(f"Chatbot engine created with adapter={adapter.__class__.__name__}, memory={memory.__class__.__name__ if memory else 'None'}")
     return ChatbotEngine(adapter=adapter, memory=memory)
 
 
@@ -129,8 +109,13 @@ def main():
         st.session_state.selected_provider = Provider.GROQ.value
     if "selected_model" not in st.session_state:
         st.session_state.selected_model = MODELS_BY_PROVIDER[Provider.GROQ.value][0]
-
-    engine = get_chatbot_engine(Provider(st.session_state.selected_provider))
+    if "context_management_mode" not in st.session_state:
+        st.session_state.context_management_mode = ContextManagementMode.OFF.value
+    if "chatbot_engine" not in st.session_state:
+        st.session_state.chatbot_engine = get_chatbot_engine(
+            Provider(st.session_state.selected_provider)
+        )
+    engine = st.session_state.chatbot_engine
 
     render_sidebar()
     render_chat_interface(engine=engine)

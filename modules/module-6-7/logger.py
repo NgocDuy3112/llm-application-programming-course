@@ -114,7 +114,7 @@ class ChatbotLogger:
 
         Args:
             name (str): Logger name (default: "chatbot")
-            **kwargs: Additional arguments for logger initialization
+            **kwargs: additional arguments for logger initialization
 
         Returns:
             logging.Logger: Configured logger instance

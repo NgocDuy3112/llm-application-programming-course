@@ -4,9 +4,9 @@ from logger import global_logger
 
 class SlidingWindowMemory():
     """
-    Sliding window memory strategy - giữ k cặp messages gần nhất.
+    Sliding window memory strategy - giữ k messages gần nhất.
 
-    Khi buffer vượt quá 2*k messages, chỉ giữ lại k cặp gần nhất.
+    Khi buffer vượt quá k messages, chỉ giữ lại k messages gần nhất.
     Điều này giúp hạn chế context length và chi phí API.
 
     Strategy:
@@ -14,31 +14,30 @@ class SlidingWindowMemory():
         - Messages cũ hơn bị loại bỏ khỏi context gửi đến LLM
 
     Attributes:
-        sliding_window_size (int | None): Số cặp messages để giữ lại
+        sliding_window_size (int | None): Số messages để giữ lại
             - None: giữ tất cả (unlimited)
             - N: giữ N messages gần nhất
 
     Example:
         >>> memory = SlidingWindowMemory(sliding_window_size=5)
-        >>> memory.add("user", "Hello")
-        >>> memory.add("assistant", "Hi there!")
+        >>> memory.add_message("user", "Hello")
+        >>> memory.add_message("assistant", "Hi there!")
         >>> messages = memory.get_messages()  # Returns list of dicts
     """
 
-    def __init__(self, sliding_window_size: int | None = None):
+    def __init__(self, sliding_window_size: int):
         """
         Khởi tạo memory buffer.
 
         Args:
-            sliding_window_size (int | None): Số cặp messages để giữ lại
-                - None: giữ tất cả (unlimited context)
+            sliding_window_size (int): Số messages để giữ lại
                 - N: giữ N messages gần nhất
         """
         global_logger.debug(f"Khởi tạo SlidingWindowMemory với sliding_window_size={sliding_window_size}")
         self.sliding_window_size = sliding_window_size
         self.buffer = []
 
-    def add(self, message: dict):
+    def add_message(self, message: dict):
         """
         Thêm message vào buffer.
 
@@ -46,7 +45,6 @@ class SlidingWindowMemory():
             message (dict): Message dictionary with keys "role" and "content"
         """
         self.buffer.append(message)
-        # Nếu buffer vượt quá giới hạn, loại bỏ messages cũ
         if self.sliding_window_size is not None:
             if len(self.buffer) > self.sliding_window_size:
                 self.buffer = self.buffer[-self.sliding_window_size:]

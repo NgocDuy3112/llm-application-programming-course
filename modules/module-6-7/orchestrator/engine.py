@@ -48,7 +48,7 @@ class ChatbotEngine:
         user_prompt: str,
         system_prompt: str | None = None,
         temperature: float | None = None,
-        max_tokens: int | None = None,
+        max_completion_tokens: int | None = None,
         tools: list | None = None,
         tool_choice: ToolChoice = ToolChoice.NONE,
         **kwargs
@@ -64,20 +64,20 @@ class ChatbotEngine:
         
         # Memory is None when ContextManagementMode.OFF is selected
         if self.memory is not None:
-            self.memory.add(user_message)
+            self.memory.add_message(user_message)
             messages = [system_message] + self.memory.get_messages() if system_prompt else self.memory.get_messages()
         else:
             messages = [system_message, user_message] if system_prompt else [user_message]
 
         while True:
-            # Gọi LLM
+            tool_choice_value = tool_choice.value if isinstance(tool_choice, ToolChoice) else tool_choice
             response = self.adapter.response(
                 model=model,
                 messages=messages,
                 tools=tools,
-                tool_choice=tool_choice,
+                tool_choice=tool_choice_value,
                 temperature=temperature,
-                max_tokens=max_tokens,
+                max_completion_tokens=max_completion_tokens,
                 **kwargs
             )
             last_message = response.choices[0].message
@@ -87,12 +87,13 @@ class ChatbotEngine:
                 global_logger.debug(f"Không có tool calls, trả về response từ assistant")
                 assistant_message = {"role": "assistant", "content": last_message.content}
                 if self.memory is not None:
-                    self.memory.add(assistant_message)
+                    self.memory.add_message(assistant_message)
                 return last_message.content
 
             # Có tool calls:
             global_logger.debug(f"Phát hiện tool calls: {[tc.function.name for tc in last_message.tool_calls]}")
             
+            # Nối assistant response vào messages (không lưu vào memory vì chưa chắc đã là final response)
             messages.append({
                 "role": "assistant",
                 "content": last_message.content,
@@ -125,13 +126,6 @@ class ChatbotEngine:
                     "tool_call_id": tool_call.id,
                     "name": tool_call.function.name,
                     "content": str(tool_response)
-                })
-
-                # Log vào instance attribute để UI đọc sau
-                self.tool_call_log.append({
-                    "tool": tool_name,
-                    "args": tool_args,
-                    "result": str(tool_response)
                 })
 
             # Continue loop - messages đã có tool responses, không rebuild từ memory
