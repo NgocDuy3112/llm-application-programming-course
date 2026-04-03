@@ -46,9 +46,9 @@ class ChatbotEngine:
         # 2. Execute tool và append kết quả vào messages
         # 3. Gọi lại LLM với messages mới
         
-        # TODO(BT5): Guardrail và Orchestration
+        # TODO(BT5): Hoàn thiện vòng lặp Function Calling
         # 1. Giới hạn max_iterations ≤ 8
-        # 2. Chỉ lưu final assistant message vào memory
+        # 2. Sau vòng lặp, chỉ lưu final assistant message vào memory
         
         user_message = {"role": "user", "content": user_prompt}
         messages = [user_prompt]
