@@ -30,12 +30,13 @@ class ChatbotEngine:
         tools: list | None = None, 
         tool_choice: ToolChoice | None = ToolChoice.NONE,
         temperature: float | None = 0.2, 
-        max_tokens: int | None = 65536
+        max_completion_tokens: int | None = 65536
     ) -> str:
         """Xử lý user prompt và trả về response từ LLM."""
         global_logger.info(f"Xử lý input từ user: {user_prompt[:50]}...")
         # TODO(BT2a): Xây dựng messages với system_prompt
         # Nếu system_prompt tồn tại, thêm vào đầu messages
+        # Sau đó thêm user_message vào messages, và sử dụng các tham số temperature, max_completion_tokens
         
         # TODO(BT3c): Tích hợp SlidingWindowMemory
         # 1. Thêm user_message vào memory

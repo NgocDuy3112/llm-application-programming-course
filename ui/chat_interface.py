@@ -56,7 +56,7 @@ def render_chat_interface(engine: object):
             assistant_reply = engine.response(
                 model=st.session_state.selected_model,
                 user_prompt=user_input,
-                # TODO(BT2b): Truyền system_prompt, temperature, max_tokens nếu có
+                # TODO(BT2b): Truyền system_prompt, temperature, max_completion_tokens nếu có
                 # TODO(BT4c): Truyền tool_choice và tools nếu enable_tools=True
             )
 
