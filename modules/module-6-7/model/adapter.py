@@ -7,6 +7,9 @@ import enum
 from logger import global_logger
 from custom_types import ToolChoice
 
+# Load environment variables from .env file
+load_dotenv()
+
 
 class BaseAdapter(ABC):
     """Base class cho LLM adapters - đã implement sẵn response()."""
@@ -34,9 +37,15 @@ class GroqAdapter(BaseAdapter):
         # - base_url="https://api.groq.com/openai/v1"
         # - api_key từ os.getenv("GROQ_API_KEY")
         global_logger.info("Khởi tạo Groq client...")
+        api_key = os.getenv("GROQ_API_KEY")
+        if not api_key:
+            raise ValueError(
+                "GROQ_API_KEY environment variable not set. "
+                "Please set your Groq API key by creating a .env file with: GROQ_API_KEY=your_key_here"
+            )
         return OpenAI(
             base_url="https://api.groq.com/openai/v1",
-            api_key=os.getenv("GROQ_API_KEY")
+            api_key=api_key
         )
 
 
