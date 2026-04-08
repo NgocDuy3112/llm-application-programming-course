@@ -94,23 +94,23 @@ AVAILABLE_FUNCTIONS = {
 
 
 DEFAULT_TOOLS = [
-    {
-        "type": "function",
-        "function": {
-            "name": "tavily_search",
-            "description": "Thực hiện tìm kiếm trên web sử dụng Tavily",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "Câu truy vấn tìm kiếm trên web.",
-                    },
+{
+    "type": "function",
+    "function": {
+        "name": "tavily_search",
+        "description": "Thực hiện tìm kiếm trên web sử dụng Tavily",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Câu truy vấn tìm kiếm trên web.",
                 },
-                "required": ["query"],
             },
-        }
-    },
+            "required": ["query"],
+        },
+    }
+},
     {
         "type": "function",
         "function": {
