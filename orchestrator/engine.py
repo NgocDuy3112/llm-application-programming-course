@@ -34,22 +34,21 @@ class ChatbotEngine:
     ) -> str:
         """Xử lý user prompt và trả về response từ LLM."""
         global_logger.info(f"Xử lý input từ user: {user_prompt[:50]}...")
-        # TODO(BT2a): Xây dựng messages với system_prompt
-        # Nếu system_prompt tồn tại, thêm vào đầu messages
-        # Sau đó thêm user_message vào messages, và sử dụng các tham số temperature, max_completion_tokens
+        # TODO(BT2a): Khởi tạo danh sách `messages`. Nếu `system_prompt` được cung cấp, hãy thêm nó làm message đầu tiên với role 'system'.
+        # Sau đó thêm yêu cầu của người dùng (`user_prompt`) với role 'user'. Đừng quên sử dụng `temperature` và `max_completion_tokens` khi gọi adapter.
         
-        # TODO(BT3c): Tích hợp SlidingWindowMemory
-        # 1. Thêm user_message vào memory
-        # 2. Lấy messages từ memory để gửi cho LLM
+        # TODO(BT3c): Sử dụng đối tượng `self.memory` để quản lý ngữ cảnh:
+        # 1. Gọi `add_message()` để lưu trữ message mới của user.
+        # 2. Thay vì tự tạo list messages, hãy dùng `get_messages()` từ memory để lấy lịch sử đã được giới hạn bởi cửa sổ trượt.
         
-        # TODO(BT4b): Tích hợp Function Calling
-        # 1. Vòng lặp while xử lý tool_calls
-        # 2. Execute tool và append kết quả vào messages
-        # 3. Gọi lại LLM với messages mới
+        # TODO(BT4b): Implement cơ chế Loop-back cho Function Calling:
+        # 1. Kiểm tra nếu LLM yêu cầu gọi tool (`tool_calls`).
+        # 2. Thực thi hàm tương ứng trong `AVAILABLE_FUNCTIONS`, lấy kết quả và thêm vào context messages.
+        # 3. Tiếp tục gọi LLM với messages mới cho đến khi nhận được câu trả lời cuối cùng.
         
-        # TODO(BT5): Guardrail và Orchestration
-        # 1. Giới hạn max_iterations ≤ 8
-        # 2. Chỉ lưu final assistant message vào memory
+        # TODO(BT5): Triển khai các quy tắc kiểm soát bổ sung:
+        # 1. Kết hợp system prompt để hướng dẫn LLM chỉ trả về câu trả lời cuối cùng sau khi hoàn thành tất cả tool calls.
+        # 2. Sử dụng self.memory để truy vết lịch sử hội thoại và chỉ lưu message cuối cùng (final answer) vào memory để tối ưu hóa ngữ cảnh cho các cuộc hội thoại dài hạn.
         
         user_message = {"role": "user", "content": user_prompt}
         messages = [user_prompt]

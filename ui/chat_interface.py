@@ -56,8 +56,8 @@ def render_chat_interface(engine: object):
             assistant_reply = engine.response(
                 model=st.session_state.selected_model,
                 user_prompt=user_input,
-                # TODO(BT2b): Truyền system_prompt, temperature, max_completion_tokens nếu có
-                # TODO(BT4c): Truyền tool_choice và tools nếu enable_tools=True
+                # TODO(BT2b): Truyền các tham số cấu hình từ Streamlit sidebar (`system_prompt`, `temperature`, `max_completion_tokens`) vào phương thức response.
+                # TODO(BT4c): Gửi danh sách `DEFAULT_TOOLS` và giá trị `tool_choice` phù hợp nếu người dùng kích hoạt `enable_tools` trên giao diện.
             )
 
         assistant_reply_clean = re.sub(r"<think>.*?</think>", "", assistant_reply, flags=re.DOTALL | re.IGNORECASE).strip()

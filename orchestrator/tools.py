@@ -44,19 +44,20 @@ AVAILABLE_FUNCTIONS = {
 
 
 DEFAULT_TOOLS = [
-    # TODO(BT4a): Viết định nghĩa các hàm get_current_date và tavily_search 
-    # theo format function calling của OpenAI
+    # TODO(BT4a): Định nghĩa cấu trúc JSON schema cho các công cụ (tools) theo chuẩn Function Calling của OpenAI.
+    # 1. Định nghĩa `get_current_date`: Mô tả rằng hàm này trả về ngày hệ thống.
+    # 2. Định nghĩa `tavily_search`: Mô tả rằng đây là công cụ tìm kiếm trên internet khi LLM không biết thông tin hiện tại, yêu cầu tham số `query`.
     # 
-    # Format mỗi tool:
+    # Mẫu cấu trúc một cụ:
     # {
     #     "type": "function",
     #     "function": {
     #         "name": "tên_hàm",
-    #         "description": "Mô tả chi tiết hàm làm gì",
+    #         "description": "Giải thích vai trò của hàm cho LLM hiểu",
     #         "parameters": {
     #             "type": "object",
-    #             "properties": {...},
-    #             "required": [...]
+    #             "properties": { "param_name": { "type": "string", "description": "..." } },
+    #             "required": ["param_name"]
     #         }
     #     }
     # }

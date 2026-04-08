@@ -42,9 +42,9 @@ class GroqAdapter(BaseAdapter):
     """Adapter cho Groq API - cloud LLM provider."""
 
     def _initialize_client(self):
-        # TODO(BT1-Groq): Tạo OpenAI client cho Groq API
-        # - base_url="https://api.groq.com/openai/v1"
-        # - api_key từ os.getenv("GROQ_API_KEY")
+        # TODO(BT1-Groq): Khởi tạo đối tượng `OpenAI` client để gọi đến server Groq Cloud.
+        # - Sử dụng base_url="https://api.groq.com/openai/v1"
+        # - Lấy api_key từ biến môi trường `GROQ_API_KEY` thông qua os.getenv.
         global_logger.info("Khởi tạo Groq client...")
 
 
@@ -52,7 +52,7 @@ class OllamaAdapter(BaseAdapter):
     """Adapter cho Ollama - local LLM server."""
 
     def _initialize_client(self):
-        # TODO(BT1-Ollama): Tạo OpenAI client cho Ollama local
-        # - base_url="http://localhost:11434/v1"
-        # - api_key="ollama" (placeholder, không cần thật)
+        # TODO(BT1-Ollama): Khởi tạo đối tượng `OpenAI` client để gọi đến server Ollama cục bộ.
+        # - Sử dụng base_url="http://localhost:11434/v1"
+        # - Sử dụng api_key="ollama" làm giá trị mặc định cho local setup.
         global_logger.info("Khởi tạo Ollama client...")
