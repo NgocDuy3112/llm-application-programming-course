@@ -102,7 +102,9 @@ class ChatbotEngine:
 
             # Thực thi tools và append tool responses vào messages (KHÔNG lưu vào memory)
             for tool_call in last_message.tool_calls:
+                tool_call_id = tool_call.id
                 tool_name = tool_call.function.name
+
                 global_logger.debug(f"Thực thi tool: {tool_name}")
                 try:
                     tool_args = json.loads(tool_call.function.arguments) or {}
@@ -120,11 +122,10 @@ class ChatbotEngine:
                     global_logger.warning(f"Tool không xác định: {tool_name}")
                     tool_response = f"Unknown tool: {tool_name}"
 
-                # Append tool response vào messages (không lưu vào memory)
                 messages.append({
                     "role": "tool",
-                    "tool_call_id": tool_call.id,
-                    "name": tool_call.function.name,
+                    "tool_call_id": tool_call_id,
+                    "name": tool_name,
                     "content": str(tool_response)
                 })
 
