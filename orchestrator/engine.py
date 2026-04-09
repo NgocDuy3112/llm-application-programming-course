@@ -2,8 +2,8 @@ from model.adapter import groq_client
 
 
 class ChatbotEngine:
-    def __init__(self):
-        self.client = groq_client
+    def __init__(self, adapter=None):
+        self.client = adapter or groq_client
     
     def response(self, model: str, user_prompt: str):
         response = self.client.chat.completions.create(

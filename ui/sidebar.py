@@ -1,5 +1,5 @@
 import streamlit as st
-from custom_types import Provider, ContextManagementMode, MODELS_BY_PROVIDER
+from custom_types import Provider, MODELS_BY_PROVIDER
 
 
 def render_sidebar():
@@ -59,15 +59,15 @@ def render_sidebar():
     st.sidebar.radio(
         label="Chế độ quản lý ngữ cảnh",
         options=[
-            ContextManagementMode.OFF.value,
-            ContextManagementMode.SLIDING_WINDOW.value,
+            "Tắt",
+            "Cửa sổ trượt (sliding window)",
         ],
         index=0,
         help="Chế độ quản lý ngữ cảnh sẽ quyết định cách chatbot sử dụng lịch sử hội thoại để tạo phản hồi. 'Tắt' sẽ không sử dụng lịch sử nào, 'Cửa sổ trượt' sẽ chỉ sử dụng một số lượng tin nhắn gần đây nhất dựa trên kích thước cửa sổ đã định.",
         key="context_management_mode"
     )
 
-    if st.session_state.get("context_management_mode") == ContextManagementMode.SLIDING_WINDOW.value:
+    if st.session_state.get("context_management_mode") == "Cửa sổ trượt (sliding window)":
         if "sliding_window_messages" not in st.session_state:
             st.session_state.sliding_window_messages = 5
         st.sidebar.number_input(
