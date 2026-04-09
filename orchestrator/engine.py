@@ -28,7 +28,7 @@ class ChatbotEngine:
         user_prompt: str, 
         system_prompt: str | None = None,
         tools: list | None = None, 
-        tool_choice: ToolChoice | None = ToolChoice.NONE,
+        tool_choice: Literal["auto", "none"] = "none",
         temperature: float | None = 0.2, 
         max_completion_tokens: int | None = 65536
     ) -> str:
