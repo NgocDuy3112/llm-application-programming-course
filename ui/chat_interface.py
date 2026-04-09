@@ -60,7 +60,7 @@ def render_chat_interface(engine: object):
                 temperature=st.session_state.temperature,
                 max_completion_tokens=st.session_state.max_completion_tokens,
                 tools=DEFAULT_TOOLS if st.session_state.enable_tools else None,
-                tool_choice=ToolChoice.AUTO if st.session_state.enable_tools else ToolChoice.NONE,
+                tool_choice="auto" if st.session_state.enable_tools else "none",
             )
 
         assistant_reply_clean = re.sub(r"<think>.*?</think>", "", assistant_reply, flags=re.DOTALL | re.IGNORECASE).strip()

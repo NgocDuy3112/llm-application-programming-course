@@ -1,4 +1,5 @@
 import json
+from typing import Literal
 
 from logger import global_logger
 from orchestrator.tools import *
@@ -50,19 +51,15 @@ class ChatbotEngine:
         temperature: float | None = None,
         max_completion_tokens: int | None = None,
         tools: list | None = None,
-        tool_choice: ToolChoice = ToolChoice.NONE,
+        tool_choice: Literal["auto", "none"] = "none",
         **kwargs
     ) -> str:
         global_logger.info(f"Xử lý input từ user: {user_prompt[:50]}...")
-        system_message = {"role": "system", "content": system_prompt if system_prompt else ""}
-        tools = tools if tool_choice != ToolChoice.NONE else None
         messages = None
         user_message = {"role": "user", "content": user_prompt}
-        
-        # Tool call log để UI đọc sau (không cần parameter)
-        self.tool_call_log = []
-        
-        # Memory is None when ContextManagementMode.OFF is selected
+        system_message = {"role": "system", "content": system_prompt if system_prompt else ""}
+        tools = None if tool_choice == "none" or tools is None else tools
+
         if self.memory is not None:
             self.memory.add_message(user_message)
             messages = [system_message] + self.memory.get_messages() if system_prompt else self.memory.get_messages()
@@ -70,12 +67,11 @@ class ChatbotEngine:
             messages = [system_message, user_message] if system_prompt else [user_message]
 
         while True:
-            tool_choice_value = tool_choice.value if isinstance(tool_choice, ToolChoice) else tool_choice
             response = self.adapter.response(
                 model=model,
                 messages=messages,
                 tools=tools,
-                tool_choice=tool_choice_value,
+                tool_choice=tool_choice,
                 temperature=temperature,
                 max_completion_tokens=max_completion_tokens,
                 **kwargs
