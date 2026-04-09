@@ -36,18 +36,6 @@ class ContextManagementMode(Enum):
     SLIDING_WINDOW = "Cửa sổ trượt (sliding window)"
 
 
-class ToolChoice(Enum):
-    """
-    Enum cho các chế độ lựa chọn tool/function calling.
-
-    Members:
-        NONE: Không sử dụng tools, chỉ generate text thuần túy
-        AUTO: Để model tự quyết định khi nào cần gọi tool
-    """
-    NONE = "none"
-    AUTO = "auto"
-
-
 MODELS_BY_PROVIDER = {
     Provider.GROQ.value: [
         "openai/gpt-oss-20b",

@@ -5,38 +5,33 @@ Mô tả: Sidebar với các controls để cấu hình chatbot.
 """
 
 import streamlit as st
-from logger import global_logger
-from custom_types import Provider, ContextManagementMode
-from custom_types import MODELS_BY_PROVIDER
 
 
 def render_sidebar():
     """
     Render sidebar với các controls để cấu hình chatbot.
     """
-    global_logger.debug("Rendering sidebar")
 
     if "selected_provider" not in st.session_state:
-        st.session_state.selected_provider = Provider.GROQ.value
+        st.session_state.selected_provider = "groq"
     if "selected_model" not in st.session_state:
-        st.session_state.selected_model = MODELS_BY_PROVIDER[Provider.GROQ.value][0]
+        st.session_state.selected_model = "gpt-oss:20b"
 
     st.sidebar.title("Cài đặt Chatbot")
 
     st.sidebar.selectbox(
         label="Chọn nhà cung cấp mô hình",
         options=[
-            Provider.GROQ.value,
-            Provider.OLLAMA.value
+            "groq",
+            "ollama"
         ],
         index=0,
         key="selected_provider"
     )
 
-    available_models = MODELS_BY_PROVIDER.get(st.session_state.selected_provider, [])
     st.sidebar.selectbox(
         label="Chọn mô hình",
-        options=available_models,
+        options=["gpt-oss:20b"],
         index=0,
         key="selected_model"
     )
