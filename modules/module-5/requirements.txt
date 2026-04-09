@@ -1,5 +1,0 @@
-openai
-pydantic-settings
-streamlit
-rich
-python-dotenv

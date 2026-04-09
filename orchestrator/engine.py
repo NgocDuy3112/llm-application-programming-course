@@ -1,31 +1,4 @@
-"""
-Module 5 - Chatbot Engine
-
-Mô tả: Engine chính của chatbot, chịu trách nhiệm điều phối việc gọi API
-và quản lý lịch sử hội thoại (memory).
-
-TODO: Hoàn thành class ChatbotEngine dưới đây:
-
-1. __init__(self, adapter, memory=None):
-   - Lưu adapter và memory vào instance attributes
-   - adapter: một trong các adapter từ model/adapter.py (GroqAdapter hoặc OllamaAdapter)
-   - memory: object quản lý lịch sử hội thoại (có thể là None)
-
-2. response(self, model, user_prompt, temperature, max_tokens, system_prompt=None, **kwargs):
-   - Nếu có system_prompt, thêm system message vào đầu messages list
-   - Nếu có memory, lấy lịch sử từ memory và thêm vào messages
-   - Thêm user message vào messages
-   - Gọi adapter.response() với messages đã xây dựng
-   - Nếu có memory, lưu user message và assistant response vào memory
-   - Trích xuất và trả về nội dung text từ response
-
-Gợi ý: Format messages theo OpenAI API:
-   - System: {"role": "system", "content": "..."}
-   - User: {"role": "user", "content": "..."}
-   - Assistant: {"role": "assistant", "content": "..."}
-"""
-
-from model.adapter import GroqAdapter, OllamaAdapter
+from model.adapter import groq_adapter
 
 
 class ChatbotEngine:
@@ -39,28 +12,16 @@ class ChatbotEngine:
     4. Quản lý lịch sử hội thoại thông qua memory object
     
     Attributes:
-        adapter (GroqAdapter | OllamaAdapter): Adapter để kết nối với LLM API
-        memory (object | None): Object quản lý lịch sử hội thoại
+        adapter: Adapter để kết nối với LLM API
     """
     
-    def __init__(self, adapter, memory=None):
-        """
-        Khởi tạo ChatbotEngine.
-        
-        Args:
-            adapter: Instance của GroqAdapter hoặc OllamaAdapter
-            memory: Object quản lý lịch sử hội thoại (có thể là None)
-        """
-        # TODO 1: Lưu adapter và memory vào instance attributes
-        pass
+    def __init__(self, adapter):
+        self.adapter = adapter
 
     def response(
         self,
         model: str,
         user_prompt: str,
-        temperature: float = 0.7,
-        max_tokens: int = 2048,
-        system_prompt: str | None = None,
         **kwargs
     ):
         """
