@@ -1,6 +1,5 @@
 import streamlit as st
-from custom_types import Provider, ContextManagementMode
-from custom_types import MODELS_BY_PROVIDER
+from custom_types import Provider, ContextManagementMode, MODELS_BY_PROVIDER
 
 
 def render_sidebar():

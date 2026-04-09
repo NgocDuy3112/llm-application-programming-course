@@ -36,6 +36,32 @@ class ContextManagementMode(Enum):
     SLIDING_WINDOW = "Cửa sổ trượt (sliding window)"
 
 
+class ToolChoice(Enum):
+    """
+    Enum cho các chế độ sử dụng tools.
+
+    Members:
+        OFF: Tắt - Không sử dụng tools
+        AUTO: Tự động - Model tự quyết định khi nào dùng tools
+        REQUIRED: Bắt buộc - Model phải dùng tools
+    """
+    OFF = "off"
+    AUTO = "auto"
+    REQUIRED = "required"
+
+
+class ContextManagementMode(Enum):
+    """
+    Enum cho các chế độ quản lý lịch sử hội thoại (context memory).
+
+    Members:
+        OFF: Tắt - Không lưu trữ lịch sử, mỗi message được xử lý độc lập
+        SLIDING_WINDOW: Cửa sổ trượt - Giữ lại k cặp user-assistant messages gần nhất
+    """
+    OFF = "Tắt"
+    SLIDING_WINDOW = "Cửa sổ trượt (sliding window)"
+
+
 MODELS_BY_PROVIDER = {
     Provider.GROQ.value: [
         "openai/gpt-oss-20b",

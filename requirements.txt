@@ -1,21 +1,3 @@
 # LLM APIs
 openai
 python-dotenv
-
-# Tokenization
-tiktoken
-
-# Embeddings and ML
-sentence-transformers
-numpy
-scikit-learn
-
-# Data Processing
-pandas
-
-# Visualization
-matplotlib
-
-# Jupyter Notebook (nếu cần)
-jupyter
-ipykernel
