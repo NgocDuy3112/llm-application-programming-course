@@ -47,7 +47,7 @@ class SlidingWindowMemory():
         self.buffer.append(message)
         if self.sliding_window_size is not None:
             if len(self.buffer) > self.sliding_window_size:
-                self.buffer = self.buffer[-self.sliding_window_size:]
+                self.buffer.pop(0)
 
     def get_messages(self) -> list:
         """
