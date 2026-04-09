@@ -51,7 +51,7 @@ class ChatbotEngine:
         # 2. Sử dụng self.memory để truy vết lịch sử hội thoại và chỉ lưu message cuối cùng (final answer) vào memory để tối ưu hóa ngữ cảnh cho các cuộc hội thoại dài hạn.
         
         user_message = {"role": "user", "content": user_prompt}
-        messages = [user_prompt]
+        messages = [user_message]
         response = self.adapter.response(
             model=model,
             messages=messages
