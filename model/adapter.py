@@ -17,7 +17,6 @@ from dotenv import load_dotenv
 import enum
 
 from logger import global_logger
-from custom_types import ToolChoice
 
 
 class BaseAdapter(ABC):
