@@ -18,31 +18,6 @@ else:
 
 
 def tavily_search(query: str) -> str:
-    """
-    Thực hiện tìm kiếm web sử dụng Tavily API.
-
-    Tavily là search API được optimize cho LLM agents, cung cấp:
-    - Search results với relevance scoring
-    - Extracted content từ web pages
-    - Anti-bot handling
-
-    Args:
-        query (str): Search query string
-
-    Returns:
-        str: Concatenated search results bao gồm:
-            - Answer summary (nếu có)
-            - Source URLs và titles
-
-    Raises:
-        Returns error string nếu:
-            - Tavily client không được khởi tạo (thiếu API key)
-            - API call thất bại
-
-    Example:
-        >>> result = tavily_search("Python programming tutorials")
-        >>> print(result[:200])  # Print first 200 chars
-    """
     global_logger.debug(f"Thực thi tavily_search với query: {query}")
     if not tavily_client:
         global_logger.error("Tavily client chưa được khởi tạo, có thể thiếu API key")
@@ -67,20 +42,6 @@ def tavily_search(query: str) -> str:
 
 
 def get_current_date() -> str:
-    """
-    Lấy ngày hiện tại của hệ thống.
-
-    Returns:
-        str: Date string theo ISO 8601 format (YYYY-MM-DD)
-
-    Example:
-        >>> get_current_date()
-        '2025-03-27'
-
-    Use case:
-        - LLM không có khái niệm về thời gian thực
-        - Tool này giúp chatbot trả lời các câu hỏi về ngày tháng
-    """
     date_str = date.today().isoformat()
     global_logger.debug(f"get_current_date được gọi, trả về: {date_str}")
     return date_str

@@ -2,10 +2,8 @@ import os
 from abc import ABC, abstractmethod
 from openai import OpenAI
 from dotenv import load_dotenv
-import enum
 
 from logger import global_logger
-from custom_types import ToolChoice
 
 # Load environment variables from .env file
 load_dotenv()
