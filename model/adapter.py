@@ -14,7 +14,6 @@ import os
 from abc import ABC, abstractmethod
 from openai import OpenAI
 from dotenv import load_dotenv
-import enum
 
 from logger import global_logger
 
