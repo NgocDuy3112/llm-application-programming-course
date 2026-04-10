@@ -31,8 +31,8 @@ import chromadb
 from markitdown import MarkItDown
 # Import SentenceTransformer (embedding) và CrossEncoder (reranking) từ sentence-transformers
 from sentence_transformers import SentenceTransformer, CrossEncoder
-# Import RecursiveCharacterTextSplitter để chia nhỏ văn bản
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+# Import RecursiveCharacterTextSplitter và MarkdownHeaderTextSplitter để chia nhỏ văn bản
+from langchain_text_splitters import RecursiveCharacterTextSplitter, MarkdownHeaderTextSplitter
 
 
 # Định nghĩa class SimpleRAG - class chính thực hiện toàn bộ pipeline RAG
@@ -111,17 +111,28 @@ class SimpleRAG:
         # ---- Text Splitter ----
         # Chia văn bản dài thành các đoạn nhỏ để embedding hiệu quả hơn
         
-        # Khởi tạo RecursiveCharacterTextSplitter với cấu hình
+        # Khởi tạo RecursiveCharacterTextSplitter (dùng cho plain text)
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size,  # Kích thước tối đa mỗi chunk
             chunk_overlap=chunk_overlap,  # Số ký tự overlap giữa các chunks
             length_function=len,  # Function để đo độ dài (dùng len())
-            # Danh sách separators theo thứ tự ưu tiên
             # Ưu tiên tách tại paragraph (\n\n) > dòng (\n) > câu (. ) > từ ( ) > ký tự ()
             separators=["\n\n", "\n", ". ", " ", ""],  # Ưu tiên tách tại paragraph > câu > từ
         )
+
+        # Khởi tạo MarkdownHeaderTextSplitter (dùng cho Markdown mode)
+        # Tách văn bản theo cấu trúc heading, mỗi section thành 1 chunk riêng
+        self.markdown_splitter = MarkdownHeaderTextSplitter(
+            headers_to_split_on=[
+                ("#", "Header 1"),
+                ("##", "Header 2"),
+                ("###", "Header 3"),
+                ("####", "Header 4"),
+            ],
+            strip_headers=False,  # Giữ lại dòng heading trong nội dung chunk
+        )
         # Ghi log debug: text splitter đã được cấu hình
-        global_logger.debug(f"Text splitter configured: chunk_size={chunk_size}, overlap={chunk_overlap}")
+        global_logger.debug(f"Text splitters configured: chunk_size={chunk_size}, overlap={chunk_overlap}")
 
         # ---- MarkItDown converter ----
         # Chuyển đổi mọi định dạng file (PDF, DOCX, PPTX, ...) sang Markdown
@@ -134,62 +145,57 @@ class SimpleRAG:
     # 1. ĐỌC TÀI LIỆU
     # ================================================================
 
-    # Method để đọc và convert file sang Markdown
-    def load_document(self, file) -> str:
+    # Method để đọc và convert file sang Markdown hoặc plain text
+    def load_document(self, file, use_markdown: bool = True) -> str:
         """
-        Đọc và chuyển đổi file upload sang Markdown (Streamlit UploadedFile).
+        Đọc file upload và trả về nội dung dạng Markdown hoặc plain text.
 
-        Workflow:
-            1. Lưu file tạm ra ổ đĩa (markitdown cần file path)
-            2. Dùng MarkItDown convert sang Markdown
-            3. Xóa file tạm
+        - use_markdown=True : Dùng MarkItDown convert file → Markdown rồi lưu
+        - use_markdown=False: Đọc thẳng nội dung file (plain text, không qua MarkItDown)
 
-        Hỗ trợ: .txt, .md, .pdf, .docx, .pptx, .xlsx, .html, ...
+        Hỗ trợ (plain text mode): .txt, .md, .html, .csv và các file text-based
+        Hỗ trợ (markdown mode) : .txt, .md, .pdf, .docx, .pptx, .xlsx, .html, ...
 
         Args:
             file: Streamlit UploadedFile object (có .name và .read())
+            use_markdown: True → MarkItDown → Markdown; False → plain text trực tiếp
 
         Returns:
-            str: Nội dung Markdown của file
+            str: Nội dung file
         """
         # Lấy tên file từ uploaded file object
         file_name = file.name
-        
-        # Lấy file extension (đuôi file) dùng os.path.splitext
-        # Ví dụ: ".pdf", ".docx", ".txt"
+        # Ghi log debug: đang load document với chế độ tương ứng
+        global_logger.debug(f"Loading document: {file_name} (use_markdown={use_markdown})")
+
+        # ---- CHừe ĐỘ TắT: đọc thẳng plain text từ file ----
+        if not use_markdown:
+            # Đọc raw bytes và decode sang UTF-8
+            raw_bytes = file.read()
+            content = raw_bytes.decode("utf-8", errors="replace")
+            global_logger.info(f"Read '{file_name}' as plain text: {len(content)} characters")
+            return content
+
+        # ---- CHừe ĐỘ BẬT: dùng MarkItDown convert → Markdown ----
         suffix = os.path.splitext(file_name)[1]  # Lấy đuôi file (.pdf, .docx, ...)
-        
-        # Ghi log debug: đang load document
-        global_logger.debug(f"Loading document: {file_name}")
 
         # Lưu vào temporary file vì markitdown cần đường dẫn file thật
-        # NamedTemporaryFile tạo file tạm với tên duy nhất
-        # delete=False để giữ file lại sau khi đóng (sẽ xóa thủ công sau)
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-            # Đọc nội dung file upload và viết vào file tạm
             tmp.write(file.read())
-            # Lưu đường dẫn file tạm để sử dụng sau
             tmp_path = tmp.name
 
         try:
             # Chuyển đổi file sang Markdown dùng MarkItDown
             result = self.markitdown.convert(tmp_path)
-            # Lấy text content từ kết quả convert
             content = result.text_content
-            # Ghi log info: đã convert thành công với độ dài content
             global_logger.info(f"Converted '{file_name}' to Markdown: {len(content)} characters")
-        # Xử lý exception nếu convert failed
         except Exception as e:
-            # Ghi log error với message lỗi
             global_logger.error(f"MarkItDown failed for '{file_name}': {str(e)}")
-            # Raise ValueError với message tiếng Việt
             raise ValueError(f"Không thể đọc file '{file_name}': {str(e)}")
         finally:
-            # Xóa file tạm dù thành công hay lỗi (cleanup)
-            # os.unlink() xóa file khỏi filesystem
+            # Xóa file tạm dù thành công hay lỗi
             os.unlink(tmp_path)
 
-        # Trả về nội dung Markdown
         return content
 
     # ================================================================
@@ -197,12 +203,13 @@ class SimpleRAG:
     # ================================================================
 
     # Method để thêm nhiều documents vào knowledge base
-    def add_documents(self, files: list) -> int:
+    def add_documents(self, files: list, use_markdown: bool = True) -> int:
         """
         Pipeline: đọc files → chunk → embed → lưu vào ChromaDB.
 
         Args:
             files: Danh sách Streamlit UploadedFile objects
+            use_markdown: True → giữ Markdown khi extract; False → plain text
 
         Returns:
             int: Tổng số chunks đã thêm vào knowledge base
@@ -213,8 +220,8 @@ class SimpleRAG:
         # Lặp qua từng file trong danh sách files
         for file in files:
             try:
-                # Bước 1: Đọc nội dung file và convert sang Markdown
-                content = self.load_document(file)
+                # Bước 1: Đọc nội dung file (Markdown hoặc plain text tùy use_markdown)
+                content = self.load_document(file, use_markdown=use_markdown)
                 
                 # Kiểm tra nếu content rỗng (chỉ có whitespace)
                 if not content.strip():
@@ -223,8 +230,15 @@ class SimpleRAG:
                     # Bỏ qua file này, tiếp tục file tiếp theo
                     continue
 
-                # Bước 2: Chia nhỏ văn bản thành các chunks dùng text_splitter
-                chunks = self.text_splitter.split_text(content)
+                # Bước 2: Chia nhỏ văn bản thành các chunks
+                if use_markdown:
+                    # Markdown mode: tách theo cấu trúc heading (#, ##, ###)
+                    # split_text() trả về list Document objects, lấy .page_content
+                    docs = self.markdown_splitter.split_text(content)
+                    chunks = [doc.page_content for doc in docs if doc.page_content.strip()]
+                else:
+                    # Plain text mode: tách theo paragraph, câu, từ
+                    chunks = self.text_splitter.split_text(content)
                 # Ghi log info: số chunks đã tạo được từ file
                 global_logger.info(f"Split '{file.name}' into {len(chunks)} chunks")
 

@@ -6,21 +6,18 @@ Nhiệm vụ:
 """
 
 import os
-import sys
 import streamlit as st
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dotenv import load_dotenv
 from custom_types import Provider, ContextManagementMode
-from model.adapter import *
+from model.adapter import GroqAdapter, OllamaAdapter, BaseAdapter
 
-from excercise.orchestrator.tools import *
-from excercise.orchestrator.tools import set_rag_instance
-from orchestrator.memory import *
+from orchestrator.tools import DEFAULT_TOOLS, set_rag_instance
+from orchestrator.memory import SlidingWindowMemory
 from orchestrator.engine import FullChatbotEngine
 
-from excercise.ui.sidebar import render_sidebar
-from excercise.ui.chat_interface import render_chat_interface
+from ui.sidebar import render_sidebar
+from ui.chat_interface import render_chat_interface
 
 load_dotenv(dotenv_path=".env", override=True)
 
@@ -30,17 +27,30 @@ load_dotenv(dotenv_path=".env", override=True)
 # ================================================================
 
 def get_memory(mode: ContextManagementMode):
+    """
+    Factory function để tạo memory object dựa trên chế độ được chọn.
+
+    Args:
+        mode (ContextManagementMode): Chế độ quản lý ngữ cảnh
+            - OFF: Không lưu lịch sử
+            - SLIDING_WINDOW: Giữ lại k cặp messages gần nhất
+
+    Returns:
+        BaseMemory | None: Memory object hoặc None nếu tắt
+
+    Raises:
+        ValueError: Nếu mode không hợp lệ
+    """
     match mode:
         case ContextManagementMode.OFF.value:
             return None
         case ContextManagementMode.SLIDING_WINDOW.value:
             window_size = st.session_state.get("sliding_window_turns", 5)
-            return SlidingWindowMemory(
-                memory=st.session_state.get("chat_history", []),
-                sliding_window_size=window_size
-            )
+            mem = SlidingWindowMemory(sliding_window_size=window_size)
+            mem.buffer = list(st.session_state.get("chat_history", []))
+            return mem
         case _:
-            raise ValueError(f"Chế độ không hợp lệ: {mode}")
+            raise ValueError(f"Chế độ quản lý ngữ cảnh không hợp lệ: {mode}")
 
 
 @st.cache_resource(show_spinner=True)
@@ -75,7 +85,7 @@ def get_rag():
         SimpleRAG: Instance đã được khởi tạo
 
     Các bước cần làm:
-        1. Import SimpleRAG từ excercise.orchestrator.rag
+        1. Import SimpleRAG từ orchestrator.rag
         2. Đọc embedding model từ env:
            os.getenv("EMBEDDING_MODEL", "AITeamVN/Vietnamese_Embedding_v2")
         3. Đọc cross encoder từ env:

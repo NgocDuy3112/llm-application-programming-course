@@ -9,7 +9,7 @@ Nhiệm vụ:
 import re
 import streamlit as st
 
-from excercise.orchestrator.tools import DEFAULT_TOOLS
+from orchestrator.tools import DEFAULT_TOOLS
 from logger import global_logger
 from custom_types import ToolChoice
 

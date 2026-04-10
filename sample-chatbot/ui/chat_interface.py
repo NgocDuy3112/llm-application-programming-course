@@ -66,7 +66,7 @@ def _render_retrieved_docs(docs_str: str):
             # Hiển thị body với custom CSS styling; đặt body vào template bằng f-string
             html = (f"<div style='background:#f8f9fa;border-left:3px solid #4CAF50;"
                     "padding:8px 12px;border-radius:4px;font-size:0.9em;"
-                    "white-space:pre-wrap;'>{body}</div>")
+                    f"white-space:pre-wrap;'>{body}</div>")
             st.markdown(html, unsafe_allow_html=True)
             
             # Tạo đường kẻ ngang phân cách giữa các chunks
@@ -110,8 +110,11 @@ def render_chat_interface(engine: object):
         for i, entry in enumerate(st.session_state.chat_history):
             # Tạo chat message bubble với role (user/assistant)
             with st.chat_message(entry["role"]):
-                # Hiển thị nội dung message
-                st.markdown(entry["content"])
+                # Hiển thị nội dung message theo chế độ Markdown hoặc plain text
+                if st.session_state.get("render_markdown", True):
+                    st.markdown(entry["content"])
+                else:
+                    st.text(entry["content"])
                 
                 # Kiểm tra nếu message index này có retrieved docs
                 if i in st.session_state.retrieved_docs_map:
@@ -171,8 +174,11 @@ def render_chat_interface(engine: object):
 
         # Tạo chat message bubble cho assistant
         with st.chat_message("assistant"):
-            # Hiển thị phản hồi của assistant
-            st.markdown(assistant_reply)
+            # Hiển thị phản hồi theo chế độ Markdown hoặc plain text
+            if st.session_state.get("render_markdown", True):
+                st.markdown(assistant_reply)
+            else:
+                st.text(assistant_reply)
             
             # Nếu có retrieved docs, hiển thị chúng
             if retrieved_docs:

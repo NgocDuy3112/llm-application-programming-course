@@ -1,0 +1,16 @@
+streamlit
+openai
+tavily-python
+python-dotenv
+
+pydantic
+pydantic-settings
+PyYAML
+pytest
+# RAG dependencies
+chromadb
+sentence-transformers
+langchain-text-splitters
+pypdf
+python-docx
+markitdown[pdf]

@@ -167,6 +167,14 @@ def render_sidebar():
         # Callback function được gọi khi giá trị thay đổi
     )
 
+    # Tạo toggle bật/tắt chuyển đổi nội dung phản hồi sang Markdown
+    st.sidebar.toggle(
+        label="Hiển thị phản hồi dạng Markdown",
+        value=True,  # Mặc định bật (hiển thị Markdown)
+        key="render_markdown",  # Lưu vào session_state["render_markdown"]
+        help="Bật: hiển thị Markdown có định dạng. Tắt: hiển thị văn bản thuần (plain text)",
+    )
+
     # ================================================================
     # KNOWLEDGE BASE (RAG) SECTION
     # ================================================================
@@ -217,9 +225,13 @@ def render_sidebar():
             try:
                 # Hiển thị spinner trong khi đang xử lý
                 with st.spinner("Đang xử lý tài liệu..."):
-                    # Gọi method add_documents() để xử lý và thêm files vào RAG
-                    # Phương thức này trả về số chunks đã thêm
-                    num_chunks = rag.add_documents(uploaded_files)
+                    # Gọi method add_documents() với trạng thái toggle Markdown
+                    # use_markdown=True: convert sang Markdown trước khi lưu
+                    # use_markdown=False: lưu dạng plain text
+                    num_chunks = rag.add_documents(
+                        uploaded_files,
+                        use_markdown=st.session_state.get("render_markdown", True)
+                    )
 
                 # Hiển thị message thành công với số chunks đã thêm
                 st.sidebar.success(f"✅ Đã thêm {num_chunks} chunks!")
