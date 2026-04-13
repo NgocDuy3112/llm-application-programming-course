@@ -37,8 +37,13 @@ class ChatbotEngine:
     ) -> str:
         """Xử lý user prompt và trả về response từ LLM."""
         global_logger.info(f"Xử lý input từ user: {user_prompt[:50]}...")
-        # TODO(BT2a): Khởi tạo danh sách `messages`. Nếu `system_prompt` được cung cấp, hãy thêm nó làm message đầu tiên với role 'system'.
-        # Sau đó thêm yêu cầu của người dùng (`user_prompt`) với role 'user'. Đừng quên sử dụng `temperature` và `max_completion_tokens` khi gọi adapter.
+        # TODO(BT2a): Xây dựng danh sách `messages` với system prompt:
+        # 1. Xác định system prompt sẽ sử dụng: nếu `system_prompt` được truyền vào thì dùng system_prompt, 
+        #    nếu không thì dùng `self.default_system_prompt`.
+        # 2. Tạo message với role 'system' và thêm vào đầu danh sách `messages`.
+        # 3. Tạo message từ `user_prompt` với role 'user' và thêm vào `messages`.
+        # 4. Đảm bảo thứ tự messages là: system → user.
+        # 5. Khi gọi adapter, truyền đầy đủ các tham số như `temperature` và `max_completion_tokens`.
         
         # TODO(BT3c): Sử dụng đối tượng `self.memory` để quản lý ngữ cảnh:
         # 1. Gọi `add_message()` để lưu trữ message mới của user.
