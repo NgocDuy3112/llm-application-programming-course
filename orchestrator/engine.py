@@ -48,7 +48,8 @@ class ChatbotEngine:
         
         # TODO(BT3c): Sử dụng đối tượng `self.memory` để quản lý ngữ cảnh:
         # 1. Gọi `add_message()` để lưu trữ message mới của user.
-        # 2. Thay vì tự tạo list messages, hãy dùng `get_messages()` từ memory để lấy lịch sử đã được giới hạn bởi cửa sổ trượt.
+        # 2. Thay vì tự tạo list messages, hãy dùng `get_messages()` từ memory 
+        # để lấy lịch sử đã được giới hạn bởi cửa sổ trượt.
         
         # TODO(BT4b): Implement cơ chế Loop-back cho Function Calling:
         # 1. Kiểm tra nếu LLM yêu cầu gọi tool (`tool_calls`).
@@ -56,8 +57,11 @@ class ChatbotEngine:
         # 3. Tiếp tục gọi LLM với messages mới cho đến khi nhận được câu trả lời cuối cùng.
         
         # TODO(BT5): Triển khai các quy tắc kiểm soát bổ sung:
-        # 1. Kết hợp system prompt để hướng dẫn LLM chỉ trả về câu trả lời cuối cùng sau khi hoàn thành tất cả tool calls.
-        # 2. Sử dụng self.memory để truy vết lịch sử hội thoại và chỉ lưu message cuối cùng (final answer) vào memory để tối ưu hóa ngữ cảnh cho các cuộc hội thoại dài hạn.
+        # 1. Kết hợp system prompt để hướng dẫn LLM 
+        # chỉ trả về câu trả lời cuối cùng sau khi hoàn thành tất cả tool calls.
+        # 2. Sử dụng self.memory để truy vết lịch sử hội thoại 
+        # và chỉ lưu message cuối cùng (final answer) vào memory 
+        # để tối ưu hóa ngữ cảnh cho các cuộc hội thoại dài hạn.
         
         user_message = {"role": "user", "content": user_prompt}
         messages = [user_message]

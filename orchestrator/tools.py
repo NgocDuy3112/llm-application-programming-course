@@ -44,11 +44,13 @@ AVAILABLE_FUNCTIONS = {
 
 
 DEFAULT_TOOLS = [
-    # TODO(BT4a): Định nghĩa cấu trúc JSON schema cho các công cụ (tools) theo chuẩn Function Calling của OpenAI.
+    # TODO(BT4a): Định nghĩa cấu trúc JSON schema cho các công cụ (tools) 
+    # theo chuẩn Function Calling của OpenAI.
     # 1. Định nghĩa `get_current_date`: Mô tả rằng hàm này trả về ngày hệ thống.
-    # 2. Định nghĩa `tavily_search`: Mô tả rằng đây là công cụ tìm kiếm trên internet khi LLM không biết thông tin hiện tại, yêu cầu tham số `query`.
+    # 2. Định nghĩa `tavily_search`: Mô tả rằng đây là công cụ tìm kiếm trên internet 
+    # khi LLM không biết thông tin hiện tại, yêu cầu tham số `query`.
     # 
-    # Mẫu cấu trúc một cụ:
+    # Mẫu cấu trúc một công cụ:
     # {
     #     "type": "function",
     #     "function": {

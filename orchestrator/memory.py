@@ -21,5 +21,6 @@ class SlidingWindowMemory():
 
     def get_messages(self) -> list:
         """Trả về messages theo sliding window strategy."""
-        # TODO(BT3b): Triển khai thuật toán cửa sổ trượt để chỉ trả về N messages gần nhất (dựa trên sliding_window_size).
+        # TODO(BT3b): Triển khai thuật toán cửa sổ trượt 
+        # để chỉ trả về N messages gần nhất (dựa trên sliding_window_size).
         pass
