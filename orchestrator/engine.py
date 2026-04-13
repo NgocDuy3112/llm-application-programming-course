@@ -31,7 +31,7 @@ class ChatbotEngine:
         model: str, 
         user_prompt: str, 
         system_prompt: str | None = None,
-        tools: list | None = None, 
+        tools: list | None = None,
         tool_choice: Literal["auto", "none"] = "none",
         temperature: float | None = 0.2, 
         max_completion_tokens: int | None = 65536
@@ -46,16 +46,22 @@ class ChatbotEngine:
         # 4. Đảm bảo thứ tự messages là: system → user.
         # 5. Khi gọi adapter, truyền đầy đủ các tham số như `temperature` và `max_completion_tokens`.
         
+        # Comment phần code đã thực hiện ở TODO(BT2a) 
+        # trước khi thực hiện TODO(BT3c)
         # TODO(BT3c): Sử dụng đối tượng `self.memory` để quản lý ngữ cảnh:
         # 1. Gọi `add_message()` để lưu trữ message mới của user.
         # 2. Thay vì tự tạo list messages, hãy dùng `get_messages()` từ memory 
         # để lấy lịch sử đã được giới hạn bởi cửa sổ trượt.
         
+        # Comment phần code đã thực hiện ở TODO(BT2a) và TODO(BT3c) 
+        # trước khi thực hiện TODO(BT4b)
         # TODO(BT4b): Implement cơ chế Loop-back cho Function Calling:
         # 1. Kiểm tra nếu LLM yêu cầu gọi tool (`tool_calls`).
         # 2. Thực thi hàm tương ứng trong `AVAILABLE_FUNCTIONS`, lấy kết quả và thêm vào context messages.
         # 3. Tiếp tục gọi LLM với messages mới cho đến khi nhận được câu trả lời cuối cùng.
         
+        # Comment phần code đã thực hiện ở TODO(BT2a), TODO(BT3c) và TODO(BT4b) 
+        # trước khi thực hiện TODO(BT5)
         # TODO(BT5): Triển khai các quy tắc kiểm soát bổ sung:
         # 1. Kết hợp system prompt để hướng dẫn LLM 
         # chỉ trả về câu trả lời cuối cùng sau khi hoàn thành tất cả tool calls.
