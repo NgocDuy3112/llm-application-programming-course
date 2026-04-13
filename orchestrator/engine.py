@@ -42,6 +42,7 @@ class ChatbotEngine:
         global_logger.debug(f"Khởi tạo ChatbotEngine với adapter={adapter.__class__.__name__ if adapter else 'None'} và memory={memory.__class__.__name__ if memory else 'None'}")
         self.adapter = adapter
         self.memory = memory
+        self.default_system_prompt = "Bạn là một trợ lý ảo hữu ích và thân thiện. Hãy trả lời câu hỏi của người dùng một cách chính xác và ngắn gọn."
 
     def response(
         self,
