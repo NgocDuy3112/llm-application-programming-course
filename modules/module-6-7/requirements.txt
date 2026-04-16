@@ -1,7 +1,0 @@
-streamlit
-openai
-tavily-python
-
-pydantic
-pydantic-settings
-PyYAML
