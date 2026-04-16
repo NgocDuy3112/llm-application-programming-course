@@ -141,6 +141,13 @@ def render_chat_interface(engine: object):
 
         # Thêm message của user vào chat history
         st.session_state.chat_history.append({"role": "user", "content": user_input})
+
+        # Hiển thị tin nhắn user ngay lập tức trước khi chờ phản hồi
+        with st.chat_message("user"):
+            if st.session_state.get("render_markdown", True):
+                st.markdown(user_input)
+            else:
+                st.text(user_input)
         
         # Gọi engine.response() để tạo phản hồi từ chatbot
         assistant_reply = engine.response(
@@ -170,7 +177,7 @@ def render_chat_interface(engine: object):
         
         # Ghi log retrieved docs (hoặc None nếu không có)
         # Ghi log retrieved docs (hoặc 'None')
-        global_logger.debug(f"Retrieved docs: {retrieved_docs if retrieved_docs else 'None'}")
+        # global_logger.debug(f"Retrieved docs: {retrieved_docs if retrieved_docs else 'None'}")
 
         # Tạo chat message bubble cho assistant
         with st.chat_message("assistant"):

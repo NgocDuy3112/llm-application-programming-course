@@ -13,6 +13,7 @@ langchain-text-splitters
 pypdf
 python-docx
 markitdown[pdf]
+rank_bm25
 
 # RAGAS evaluation
 ragas

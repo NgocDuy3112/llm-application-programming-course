@@ -40,7 +40,7 @@ def render_sidebar():
     available_models = MODELS_BY_PROVIDER.get(st.session_state.selected_provider, [])
     st.sidebar.selectbox(label="Chọn mô hình", options=available_models, index=0, key="selected_model")
     st.sidebar.slider(label="Độ sáng tạo (Temperature)", min_value=0.0, max_value=1.0, value=0.25, step=0.05, key="temperature")
-    st.sidebar.number_input(label="Max Output Tokens", min_value=2048, max_value=131072, value=16384, step=256, key="max_tokens")
+    st.sidebar.number_input(label="Max Output Tokens", min_value=2048, max_value=131072, value=3072, step=256, key="max_tokens")
     st.sidebar.text_area(label="System Instruction", height=200, placeholder="Bạn là một trợ lý hữu ích.", key="instruction")
 
     st.sidebar.radio(

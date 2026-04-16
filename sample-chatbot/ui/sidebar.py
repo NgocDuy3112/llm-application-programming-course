@@ -28,10 +28,11 @@ from custom_types import Provider, ContextManagementMode
 MODELS_BY_PROVIDER = {
     # Danh sách models cho provider GROQ
     Provider.GROQ.value: [
-        "openai/gpt-oss-20b",
-        "moonshotai/kimi-k2-instruct-0905",
+        "llama-3.3-70b-versatile",
+        "llama-3.1-8b-instant",
         "qwen/qwen3-32b",
-        "llama-3.3-70b-versatile"
+        "moonshotai/kimi-k2-instruct-0905",
+        "openai/gpt-oss-20b",
     ],
     # Danh sách models cho provider OLLAMA (local models)
     Provider.OLLAMA.value: [
@@ -67,8 +68,8 @@ def render_sidebar():
     
     # Kiểm tra nếu 'selected_model' chưa tồn tại trong session_state
     if "selected_model" not in st.session_state:
-        # Khởi tạo model mặc định là "openai/gpt-oss-20b"
-        st.session_state.selected_model = "openai/gpt-oss-20b"
+        # Khởi tạo model mặc định là "llama-3.3-70b-versatile"
+        st.session_state.selected_model = "llama-3.3-70b-versatile"
     
     # Tạo tiêu đề cho sidebar với text "Cài đặt Chatbot"
     st.sidebar.title("Cài đặt Chatbot")
@@ -113,9 +114,9 @@ def render_sidebar():
     # Tạo input số để chọn số tokens tối đa cho phản hồi
     st.sidebar.number_input(
         label="Độ dài tối đa của phản hồi (Max Output Tokens)",
-        min_value=2048,    # Giá trị nhỏ nhất: 2048 tokens
+        min_value=1024,    # Giá trị nhỏ nhất: 1024 tokens
         max_value=131072,  # Giá trị lớn nhất: 131072 tokens
-        value=16384,       # Giá trị mặc định
+        value=3072,       # Giá trị mặc định
         step=256,          # Bước nhảy khi tăng/giảm
         key="max_tokens"   # Lưu vào session_state["max_tokens"]
     )
@@ -124,7 +125,18 @@ def render_sidebar():
     st.sidebar.text_area(
         label="Câu lệnh hệ thống (System prompt)",
         height=200,  # Chiều cao của text area (pixels)
-        placeholder="Bạn là một trợ lý hữu ích và thân thiện.",  # Text gợi ý
+        value="""Bạn là Trợ lý Ảo chuyên gia về Nhân sự và Pháp chế của Công ty Cổ phần Cấp nước Trung An.
+Nhiệm vụ: Trả lời các thắc mắc của người lao động bằng cách gọi tool knowledge_base dựa trên tài liệu "Nội quy lao động" được cung cấp trong ngữ cảnh (context).
+
+Khai thác dữ liệu:
+1. LUÔN trích dẫn chính xác số Điều, Khoản và Mục khi đưa ra thông tin (Ví dụ: "Theo Điều 4, Khoản 3.1...").
+2. Nếu câu hỏi không có trong tài liệu, hãy trả lời lịch sự: "Rất tiếc, nội dung này không được quy định trong Nội quy lao động hiện tại. Vui lòng liên hệ phòng TCHC để được giải đáp chi tiết."
+3. Tuyệt đối KHÔNG tự ý suy diễn hoặc dùng kiến thức bên ngoài về Luật Lao động chung nếu tài liệu nội bộ có quy định riêng(Ví dụ: Số ngày nghỉ kết hôn trong nội quy là 04 ngày, khác với quy định tối thiểu 03 ngày của luật chung).
+
+Ngôn ngữ và Phong cách:
+- Ngôn ngữ: Tiếng Việt, chuyên nghiệp, rõ ràng, dễ hiểu nhưng vẫn giữ tính pháp lý.
+- Cấu trúc: Sử dụng bullet points để liệt kê các điều kiện hoặc hình thức kỷ luật.
+- Định dạng: Bôi đậm các con số quan trọng (ngày nghỉ, mức tiền, thời hạn).""",
         key="system_prompt"  # Lưu vào session_state["system_prompt"]
     )
     
@@ -175,6 +187,22 @@ def render_sidebar():
         help="Bật: hiển thị Markdown có định dạng. Tắt: hiển thị văn bản thuần (plain text)",
     )
 
+    # Tạo toggle bật/tắt Hybrid Search (vector + BM25)
+    st.sidebar.toggle(
+        label="Hybrid Search (Vector + BM25)",
+        value=False,  # Mặc định tắt (chỉ dùng vector search)
+        key="use_hybrid_search",  # Lưu vào session_state["use_hybrid_search"]
+        help="Bật: kết hợp vector search + BM25 keyword search (Reciprocal Rank Fusion). Tắt: chỉ dùng vector search.",
+    )
+
+    # Tạo toggle bật/tắt Reranking bằng Cross-Encoder
+    st.sidebar.toggle(
+        label="Reranking (Cross-Encoder)",
+        value=True,  # Mặc định bật
+        key="use_rerank",  # Lưu vào session_state["use_rerank"]
+        help="Bật: dùng Cross-Encoder để chấm điểm lại kết quả (chậm hơn nhưng chính xác hơn). Tắt: bỏ qua rerank.",
+    )
+
     # ================================================================
     # KNOWLEDGE BASE (RAG) SECTION
     # ================================================================
@@ -187,7 +215,7 @@ def render_sidebar():
     st.sidebar.subheader("📚 Knowledge Base")
 
     # Lấy RAG instance từ session_state (đã được khởi tạo trong app.py)
-    rag = st.session_state.get("rag")
+    rag = st.session_state.get("rag")   
     
     # Kiểm tra nếu rag tồn tại (không phải None)
     if rag:

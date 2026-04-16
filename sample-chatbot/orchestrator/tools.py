@@ -134,8 +134,10 @@ def knowledge_base_search(query: str) -> str:
     # Try-except block để xử lý exceptions
     try:
         # Gọi method retrieve() của RAG instance để tìm kiếm
-        # Phương thức này thực hiện: vector search → rerank → format context
-        result = _rag_instance.retrieve(query)
+        # Truyền use_hybrid từ session_state (toggle Hybrid Search trên sidebar)
+        use_hybrid = st.session_state.get("use_hybrid_search", False)
+        use_rerank = st.session_state.get("use_rerank", True)
+        result = _rag_instance.retrieve(query, use_hybrid=use_hybrid, use_rerank=use_rerank)
         
         # Lưu kết quả retrieve vào session_state để hiển thị trên UI
         st.session_state["last_retrieved_docs"] = result
@@ -196,8 +198,8 @@ DEFAULT_TOOLS = [
         "function": {
             "name": "get_current_date",
             "description": "Lấy ngày hiện tại",
-            # Không có parameters
-            "parameters": {},
+            # Không có parameters — dùng schema chuẩn OpenAI
+            "parameters": {"type": "object", "properties": {}},
         }
     },
     # Tool 3: Knowledge base search

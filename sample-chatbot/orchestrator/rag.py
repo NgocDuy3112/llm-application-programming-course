@@ -29,10 +29,16 @@ from logger import global_logger
 import chromadb
 # Import MarkItDown - công cụ convert nhiều định dạng file sang Markdown
 from markitdown import MarkItDown
+# Import pypdf để đọc PDF dưới dạng plain text
+from pypdf import PdfReader
+# Import python-docx để đọc DOCX dưới dạng plain text
+from docx import Document as DocxDocument
 # Import SentenceTransformer (embedding) và CrossEncoder (reranking) từ sentence-transformers
 from sentence_transformers import SentenceTransformer, CrossEncoder
 # Import RecursiveCharacterTextSplitter và MarkdownHeaderTextSplitter để chia nhỏ văn bản
 from langchain_text_splitters import RecursiveCharacterTextSplitter, MarkdownHeaderTextSplitter
+# Import SearchEngine để xử lý toàn bộ logic tìm kiếm (vector, BM25, hybrid, rerank)
+from orchestrator.search import SearchEngine
 
 
 # Định nghĩa class SimpleRAG - class chính thực hiện toàn bộ pipeline RAG
@@ -128,6 +134,8 @@ class SimpleRAG:
                 ("##", "Header 2"),
                 ("###", "Header 3"),
                 ("####", "Header 4"),
+                ("#####", "Header 5"),
+                ("######", "Header 6"),  
             ],
             strip_headers=False,  # Giữ lại dòng heading trong nội dung chunk
         )
@@ -140,6 +148,25 @@ class SimpleRAG:
         self.markitdown = MarkItDown()
         # Ghi log debug: MarkItDown đã được khởi tạo
         global_logger.debug("MarkItDown converter initialized")
+
+        # ---- Search Engine ----
+        # Xử lý toàn bộ logic tìm kiếm: vector, BM25, hybrid, rerank, retrieve
+        self.search_engine = SearchEngine(
+            embedding_model=self.embedding_model,
+            cross_encoder=self.cross_encoder,
+            collection=self.collection,
+        )
+        global_logger.debug("SearchEngine initialized")
+
+    def set_keyword_extractor(self, adapter, model: str):
+        """
+        Cấu hình LLM để trích xuất keywords trước khi BM25 search.
+
+        Args:
+            adapter: BaseAdapter instance (GroqAdapter, OllamaAdapter, ...)
+            model: Tên model dùng cho keyword extraction
+        """
+        self.search_engine.set_keyword_extractor(adapter, model)
 
     # ================================================================
     # 1. ĐỌC TÀI LIỆU
@@ -168,15 +195,43 @@ class SimpleRAG:
         # Ghi log debug: đang load document với chế độ tương ứng
         global_logger.debug(f"Loading document: {file_name} (use_markdown={use_markdown})")
 
-        # ---- CHừe ĐỘ TắT: đọc thẳng plain text từ file ----
+        # ---- CHế ĐỘ TẮT: dùng thư viện chuyên dụng extract text từ file ----
         if not use_markdown:
-            # Đọc raw bytes và decode sang UTF-8
-            raw_bytes = file.read()
-            content = raw_bytes.decode("utf-8", errors="replace")
+            suffix = os.path.splitext(file_name)[1].lower()
+
+            if suffix == ".pdf":
+                # Dùng pypdf để extract text từ PDF
+                raw_bytes = file.read()
+                with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+                    tmp.write(raw_bytes)
+                    tmp_path = tmp.name
+                try:
+                    reader = PdfReader(tmp_path)
+                    content = "\n".join(page.extract_text() or "" for page in reader.pages)
+                finally:
+                    os.unlink(tmp_path)
+
+            elif suffix == ".docx":
+                # Dùng python-docx để extract text từ DOCX
+                raw_bytes = file.read()
+                with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+                    tmp.write(raw_bytes)
+                    tmp_path = tmp.name
+                try:
+                    doc = DocxDocument(tmp_path)
+                    content = "\n".join(para.text for para in doc.paragraphs)
+                finally:
+                    os.unlink(tmp_path)
+
+            else:
+                # Các file text-based (.txt, .md, .csv, .html, ...): đọc trực tiếp
+                raw_bytes = file.read()
+                content = raw_bytes.decode("utf-8", errors="replace")
+
             global_logger.info(f"Read '{file_name}' as plain text: {len(content)} characters")
             return content
 
-        # ---- CHừe ĐỘ BẬT: dùng MarkItDown convert → Markdown ----
+        # ---- CHế ĐỘ BẬT: dùng MarkItDown convert → Markdown ----
         suffix = os.path.splitext(file_name)[1]  # Lấy đuôi file (.pdf, .docx, ...)
 
         # Lưu vào temporary file vì markitdown cần đường dẫn file thật
@@ -232,10 +287,17 @@ class SimpleRAG:
 
                 # Bước 2: Chia nhỏ văn bản thành các chunks
                 if use_markdown:
-                    # Markdown mode: tách theo cấu trúc heading (#, ##, ###)
-                    # split_text() trả về list Document objects, lấy .page_content
-                    docs = self.markdown_splitter.split_text(content)
-                    chunks = [doc.page_content for doc in docs if doc.page_content.strip()]
+                    # Markdown mode - 2 bước:
+                    # Bước 2a: MarkdownHeaderTextSplitter tách theo cấu trúc heading
+                    #          mỗi section (#, ##, ###) thành 1 Document riêng
+                    header_docs = self.markdown_splitter.split_text(content)
+                    # Bước 2b: Với mỗi section còn quá lớn (vượt chunk_size),
+                    #          dùng text_splitter cắt tiếp → đảm bảo không có chunk khổng lồ
+                    chunks = []
+                    for doc in header_docs:
+                        sub_chunks = self.text_splitter.split_text(doc.page_content)
+                        chunks.extend(sub_chunks)
+                    chunks = [c for c in chunks if c.strip()]
                 else:
                     # Plain text mode: tách theo paragraph, câu, từ
                     chunks = self.text_splitter.split_text(content)
@@ -280,190 +342,49 @@ class SimpleRAG:
 
         # Ghi log info: tổng số chunks đã thêm
         global_logger.info(f"Total chunks added: {total_chunks}")
+
+        # Rebuild BM25 index sau khi thêm documents mới
+        self.search_engine.build_bm25()
         
         # Trả về tổng số chunks
         return total_chunks
 
     # ================================================================
-    # 3. TÌM KIẾM (RETRIEVAL)
+    # 3. TÌM KIẾM & RETRIEVE
     # ================================================================
 
-    # Method để search documents trong ChromaDB
-    def search(self, query: str, top_k: int = 15) -> tuple[list[str], list[dict]]:
+    def retrieve(
+        self,
+        query: str,
+        search_top_k: int = 15,
+        rerank_top_k: int = 4,
+        use_hybrid: bool = False,
+        use_rerank: bool = True,
+    ) -> str:
         """
-        Tìm kiếm documents tương tự với query trong ChromaDB.
-
-        Cách hoạt động:
-            1. Embed query thành vector
-            2. Tìm top_k vectors gần nhất trong ChromaDB (cosine similarity)
-            3. Trả về danh sách text và metadata tương ứng
+        Pipeline đầy đủ: search → (rerank) → format context.
+        Delegate toàn bộ cho SearchEngine.
 
         Args:
             query: Câu hỏi của người dùng
-            top_k: Số kết quả tối đa cần lấy
+            search_top_k: Số kết quả lấy từ search
+            rerank_top_k: Số kết quả giữ lại sau reranking
+            use_hybrid: True → Hybrid (vector + BM25 + RRF); False → vector only
+            use_rerank: True → dùng Cross-Encoder rerank; False → bỏ qua bước rerank
 
         Returns:
-            tuple[list[str], list[dict]]: Danh sách đoạn văn bản và metadata (source, ...)
+            str: Context string hoặc thông báo nếu không tìm thấy
         """
-        # Kiểm tra nếu knowledge base không có documents nào
-        if self.doc_count() == 0:
-            # Ghi log debug: knowledge base trống
-            global_logger.debug("Knowledge base is empty, returning empty results")
-            # Trả về 2 list rỗng
-            return [], []
-
-        # Ghi log debug: đang search với query (50 ký tự đầu tiên)
-        global_logger.debug(f"Searching knowledge base for: '{query[:50]}...'")
-
-        # Embed query thành vector
-        # encode() nhận list các strings, trả về numpy array
-        # tolist() convert sang Python list để truyền vào ChromaDB
-        query_embedding = self.embedding_model.encode([query]).tolist()
-
-        # Tìm kiếm trong ChromaDB
-        results = self.collection.query(
-            query_embeddings=query_embedding,  # Vector embedding của query
-            # Số kết quả cần lấy, không vượt quá số documents có sẵn
-            n_results=min(top_k, self.doc_count()),  # Không lấy nhiều hơn số doc có
-            # Bao gồm documents (text) và metadatas trong kết quả
-            include=["documents", "metadatas"],
+        return self.search_engine.retrieve(
+            query,
+            search_top_k=search_top_k,
+            rerank_top_k=rerank_top_k,
+            use_hybrid=use_hybrid,
+            use_rerank=use_rerank,
         )
 
-        # Lấy danh sách documents từ results
-        # results.get() trả về dict, ["documents"] là list của list, [0] lấy list đầu tiên
-        documents = results.get("documents", [[]])[0]
-        # Lấy danh sách metadatas từ results
-        metadatas = results.get("metadatas", [[]])[0]
-        
-        # Ghi log debug: số kết quả tìm được
-        global_logger.debug(f"Found {len(documents)} results from vector search")
-        
-        # Trả về tuple (documents, metadatas)
-        return documents, metadatas
-
     # ================================================================
-    # 4. RERANKING
-    # ================================================================
-
-    # Method để rerank documents dùng Cross-Encoder
-    def rerank(self, query: str, documents: list[str], top_k: int = 6) -> list[str]:
-        """
-        Rerank kết quả search bằng Cross-Encoder để tăng độ chính xác.
-
-        Cross-Encoder nhận cặp (query, document) và cho điểm relevance.
-        Chính xác hơn cosine similarity nhưng chậm hơn → chỉ dùng trên top-k nhỏ.
-
-        Args:
-            query: Câu hỏi của người dùng
-            documents: Danh sách documents từ bước search
-            top_k: Số kết quả tốt nhất cần giữ lại
-
-        Returns:
-            list[str]: Danh sách documents đã được sắp xếp lại theo relevance
-        """
-        # Kiểm tra nếu không có documents
-        if not documents:
-            # Trả về list rỗng
-            return []
-
-        # Ghi log debug: đang rerank với số documents và top_k
-        global_logger.debug(f"Reranking {len(documents)} documents, keeping top {top_k}")
-
-        # Tạo cặp (query, document) cho cross-encoder
-        # List comprehension tạo list của lists: [[query, doc1], [query, doc2], ...]
-        pairs = [[query, doc] for doc in documents]
-
-        # Cross-encoder chấm điểm từng cặp
-        # predict() trả về numpy array của scores
-        scores = self.cross_encoder.predict(pairs)
-
-        # Sắp xếp theo điểm giảm dần và lấy top_k
-        # zip(scores, documents) tạo list của tuples: [(score1, doc1), (score2, doc2), ...]
-        # sorted() sắp xếp theo score (x[0]) giảm dần (reverse=True)
-        scored_docs = sorted(zip(scores, documents), key=lambda x: x[0], reverse=True)
-        
-        # Lấy chỉ documents (không lấy scores) từ top_k đầu tiên
-        reranked = [doc for _, doc in scored_docs[:top_k]]
-
-        # Ghi log debug: reranking hoàn tất với top scores
-        global_logger.debug(f"Reranking complete, top scores: {[f'{s:.3f}' for s, _ in scored_docs[:top_k]]}")
-        
-        # Trả về danh sách documents đã rerank
-        return reranked
-
-    # ================================================================
-    # 5. RETRIEVE (KẾT HỢP SEARCH + RERANK)
-    # ================================================================
-
-    # Method chính để retrieve context từ knowledge base
-    def retrieve(self, query: str, search_top_k: int = 15, rerank_top_k: int = 5) -> str:
-        """
-        Pipeline đầy đủ: search → rerank → format thành context string.
-
-        Đây là method chính được gọi bởi tool knowledge_base_search.
-
-        Args:
-            query: Câu hỏi của người dùng
-            search_top_k: Số kết quả lấy từ vector search
-            rerank_top_k: Số kết quả giữ lại sau reranking
-
-        Returns:
-            str: Context string chứa các đoạn văn bản liên quan,
-                 hoặc thông báo nếu không tìm thấy
-        """
-        # Ghi log info: bắt đầu retrieve với query
-        global_logger.info(f"RAG retrieve for query: '{query}...'")
-
-        # Bước 1: Vector search (with metadata)
-        # Gọi method search() để lấy documents và metadatas
-        documents, metadatas = self.search(query, top_k=search_top_k)
-
-        # Kiểm tra nếu không có documents
-        if not documents:
-            # Trả về message thông báo không tìm thấy
-            return "Không tìm thấy thông tin liên quan trong knowledge base."
-
-        # Bước 2: Rerank inline (giữ metadata đồng bộ với documents)
-        
-        # Tạo cặp (query, document) cho cross-encoder
-        pairs = [[query, doc] for doc in documents]
-        
-        # Cross-encoder chấm điểm từng cặp
-        scores = self.cross_encoder.predict(pairs)
-        
-        # Lấy indices của top_k documents có score cao nhất
-        # sorted() sắp xếp indices theo score giảm dần
-        ranked_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:rerank_top_k]
-        
-        # Lấy reranked documents theo indices
-        reranked_docs  = [documents[i] for i in ranked_indices]
-        
-        # Lấy reranked metadatas theo indices (với check bound)
-        reranked_metas = [metadatas[i] if i < len(metadatas) else {} for i in ranked_indices]
-
-        # Bước 3: Format thành context string (có source)
-        
-        # List để chứa các phần context
-        context_parts = []
-        
-        # Lặp qua documents và metadatas với index (bắt đầu từ 1)
-        for i, (doc, meta) in enumerate(zip(reranked_docs, reranked_metas), 1):
-            # Lấy source từ metadata, default là "Unknown"
-            source = meta.get("source", "Unknown") if meta else "Unknown"
-            # Tạo context part với header chứa số thứ tự và source
-            context_parts.append(f"[Tài liệu {i} — 📄 {source}]\n{doc}")
-
-        # Join các context parts với delimiter "\n\n---\n\n"
-        context = "\n\n---\n\n".join(context_parts)
-        
-        # Ghi log info: retrieve hoàn tất với số documents và độ dài context
-        global_logger.info(f"RAG retrieve complete: {len(reranked_docs)} documents, {len(context)} chars")
-        
-        # Trả về context string
-        return context
-
-    # ================================================================
-    # 6. UTILITIES
+    # 4. UTILITIES
     # ================================================================
 
     # Method để lấy số lượng documents trong collection
