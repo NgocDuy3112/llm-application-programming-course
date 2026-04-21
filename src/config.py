@@ -8,37 +8,21 @@ from transformers import pipeline
 
 load_dotenv()
 
-try:
-    from google.colab import userdata
-    IS_COLAB = True
-except ImportError:
-    IS_COLAB = False
 
 # --- Dataset & Model Configuration ---
-DATASET_NAME = "5CD-AI/Vietnamese-meta-math-MetaMathQA-40K-gg-translated"
+DATASET_FILE_PATH = "data/sample_dataset.xlsx"
+DATASET_NAME = DATASET_FILE_PATH  # Backward-compatible alias.
 MODEL_ID = "meta-llama/Llama-3.2-1B-Instruct"
 BATCH_SIZE = 5
 PIPE_BATCH_SIZE = 5
-
-# --- File Output Templates ---
-OUTPUT_FILE_TEMPLATE = "cot_results_{timestamp}.xlsx"
-DATASET_EXCEL_TEMPLATE = "dataset_{timestamp}.xlsx"
-ACCURACY_CSV_TEMPLATE = "cot_accuracy_{timestamp}.csv"
 
 # --- Inference Parameters ---
 MAX_NEW_TOKENS = 512
 TEMPERATURE = 0.1  # Lower for math accuracy
 TOP_P = 0.95
-REPETITION_PENALTY = 1.1
 
 
 def get_hf_token():
-    """Get HuggingFace token from .env, Colab Secrets, or environment."""
-    if IS_COLAB:
-        try:
-            return userdata.get("HF_TOKEN")
-        except Exception:
-            pass
     return os.getenv("HF_TOKEN")
 
 
@@ -48,9 +32,7 @@ def build_pipeline():
     if hf_token:
         login(token=hf_token)
     else:
-        print("Note: HF_TOKEN not found in Colab Secrets. Please login manually.")
-        if IS_COLAB:
-            login()
+        print("Note: HF_TOKEN not found in environment. Please login manually.")
 
     device = 0 if torch.cuda.is_available() else -1
     dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
@@ -59,6 +41,14 @@ def build_pipeline():
         "text-generation",
         model=MODEL_ID,
         device=device,
-        torch_dtype=dtype,
+        dtype=dtype,
     )
+
+    # Llama-style tokenizers often do not define a pad token by default.
+    # Batched generation requires one, so reuse EOS and left-pad the inputs.
+    if pipe.tokenizer.pad_token_id is None:
+        pipe.tokenizer.pad_token = pipe.tokenizer.eos_token
+        pipe.tokenizer.pad_token_id = pipe.tokenizer.eos_token_id
+    pipe.tokenizer.padding_side = "left"
+
     return pipe

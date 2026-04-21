@@ -1,9 +1,6 @@
-"""Text generation engine: pipeline inference and output decoding."""
 from src.config import (
     MAX_NEW_TOKENS,
     TEMPERATURE,
-    TOP_P,
-    REPETITION_PENALTY,
     PIPE_BATCH_SIZE,
 )
 
@@ -52,8 +49,6 @@ def generate_text_with_prompt(pipe, prompts, system_prompt: str, batch_size: int
         formatted_prompts,
         max_new_tokens=MAX_NEW_TOKENS,
         temperature=TEMPERATURE,
-        top_p=TOP_P,
-        repetition_penalty=REPETITION_PENALTY,
         return_full_text=False,
         batch_size=batch_size,
     )

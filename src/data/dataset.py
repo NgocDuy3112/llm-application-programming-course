@@ -1,19 +1,48 @@
-"""Dataset loading, sampling, and preprocessing utilities."""
-import random
+from pathlib import Path
 
-from datasets import load_dataset
+from datasets import Dataset
+from openpyxl import load_workbook
 
 from src.utils.text import extract_answer
 
 
-def load_dataset_from_hf(dataset_name: str):
-    return load_dataset(dataset_name, split="train")
+def _resolve_dataset_path(dataset_path: str) -> Path:
+    path = Path(dataset_path)
+    if path.is_absolute():
+        return path
+    return Path(__file__).resolve().parents[2] / path
 
 
-def sample_dataset(ds, num_samples: int):
-    num_samples = min(num_samples, len(ds))
-    indices = random.sample(range(len(ds)), num_samples)
-    return ds.select(indices)
+def load_dataset_from_excel(dataset_path: str):
+    """Load the local Excel dataset and normalize its columns."""
+    path = _resolve_dataset_path(dataset_path)
+    wb = load_workbook(path, read_only=True, data_only=True)
+    ws = wb.active
+
+    headers = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
+    if "query_vi" not in headers:
+        raise ValueError(f"Missing required column 'query_vi' in {path}")
+
+    response_header = next(
+        (h for h in headers if isinstance(h, str) and h.startswith("response_vi")),
+        None,
+    )
+    if response_header is None:
+        raise ValueError(f"Missing required response column in {path}")
+
+    rows = []
+    for values in ws.iter_rows(min_row=2, values_only=True):
+        row = {}
+        for header, value in zip(headers, values):
+            if header == "query_vi":
+                row["query_vi"] = value
+            elif header == response_header:
+                row["response_vi"] = value
+        if row:
+            rows.append(row)
+
+    wb.close()
+    return Dataset.from_list(rows)
 
 
 def add_ground_truth(ds):
