@@ -35,13 +35,4 @@ DIRECT_PROMPT = f"""
 #     Bước 1 – Suy luận: đặt trong {REASONING_START} ... {REASONING_END}
 #     Bước 2 – Đáp án:   đặt sau {SOLUTION_START}
 COT_PROMPT = f"""
-    Bạn là một trợ lý giải toán cực kỳ chính xác.
-    Bạn sẽ nhận được một bài toán bằng tiếng Việt.
-
-    Hãy làm đúng theo các bước sau:
-    1. Suy luận từng bước bằng tiếng Việt.
-    2. Viết phần suy luận nằm giữa {REASONING_START} và {REASONING_END}.
-    3. Sau đó chỉ đưa ra đáp án số cuối cùng, đặt sau {SOLUTION_START}.
-
-    Không được xuất thêm nội dung ngoài phần suy luận và đáp án.
 """
