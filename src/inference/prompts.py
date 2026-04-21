@@ -1,5 +1,7 @@
 """System prompts and formatting markers for CoT evaluation."""
 
+from textwrap import dedent
+
 # --- Markers for prompt formatting ---
 # Keep these marker variables as-is; students do not need to change them.
 SOLUTION_START = "####"
@@ -19,6 +21,12 @@ REASONING_END = "</thought>"
 #
 #   Lưu ý: dùng f-string để nhúng SOLUTION_START / SOLUTION_END vào prompt.
 DIRECT_PROMPT = f"""
+    Bạn là một trợ lý giải toán cực kỳ chính xác.
+    Bạn sẽ nhận được một bài toán bằng tiếng Việt.
+
+    Hãy đọc kỹ đề bài và CHỈ trả về đáp án số cuối cùng.
+    Đặt đáp án ngay sau {SOLUTION_START}.
+    Không giải thích, không trình bày bước làm, không thêm bất kỳ nội dung nào khác.
 """
 
 # TODO (2): Viết system prompt cho chế độ Chain-of-Thought (CoT).
@@ -35,4 +43,13 @@ DIRECT_PROMPT = f"""
 #     Bước 1 – Suy luận: đặt trong {REASONING_START} ... {REASONING_END}
 #     Bước 2 – Đáp án:   đặt sau {SOLUTION_START}
 COT_PROMPT = f"""
+    Bạn là một trợ lý giải toán cực kỳ chính xác.
+    Bạn sẽ nhận được một bài toán bằng tiếng Việt.
+
+    Hãy làm đúng theo các bước sau:
+    1. Suy luận từng bước bằng tiếng Việt.
+    2. Viết phần suy luận nằm giữa {REASONING_START} và {REASONING_END}.
+    3. Sau đó chỉ đưa ra đáp án số cuối cùng, đặt sau {SOLUTION_START}.
+
+    Không được xuất thêm nội dung ngoài phần suy luận và đáp án.
 """
