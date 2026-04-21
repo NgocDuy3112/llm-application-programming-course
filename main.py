@@ -18,8 +18,8 @@ from src.config import (
     build_pipeline,
 )
 from src.inference.prompts import (
-    SYSTEM_PROMPT_DIRECT_VI,
-    SYSTEM_PROMPT_COT_VI,
+    DIRECT_PROMPT,
+    COT_PROMPT,
 )
 from src.utils.file_io import save_dataset_to_excel, save_accuracy_to_csv
 from src.utils.text import extract_answer
@@ -101,12 +101,12 @@ def run():
         # Generate responses: no-CoT and with-CoT
         print(f"   Batch {batch_idx}: Generating no-CoT responses...")
         no_cot_texts = generate_text_with_prompt(
-            pipe, queries, SYSTEM_PROMPT_DIRECT_VI, batch_size=BATCH_SIZE
+            pipe, queries, DIRECT_PROMPT, batch_size=BATCH_SIZE
         )
 
         print(f"   Batch {batch_idx}: Generating CoT responses...")
         cot_texts = generate_text_with_prompt(
-            pipe, queries, SYSTEM_PROMPT_COT_VI, batch_size=BATCH_SIZE
+            pipe, queries, COT_PROMPT, batch_size=BATCH_SIZE
         )
 
         # Process results

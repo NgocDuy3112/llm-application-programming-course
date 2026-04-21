@@ -1,20 +1,38 @@
 """System prompts and formatting markers for CoT evaluation."""
 
 # --- Markers for prompt formatting ---
+# Keep these marker variables as-is; students do not need to change them.
 SOLUTION_START = "####"
 SOLUTION_END = ""
 REASONING_START = "<thought>"
 REASONING_END = "</thought>"
 
 # --- System prompts for direct (no CoT) and CoT modes ---
-SYSTEM_PROMPT_DIRECT_VI = f"""You are a highly accurate math problem solver.
-You will be given a problem in Vietnamese.
-Read the problem carefully and provide ONLY your final numerical answer between {SOLUTION_START} and {SOLUTION_END}. Do not explain your work."""
 
-SYSTEM_PROMPT_COT_VI = f"""You are a highly accurate math problem solver.
-You will be given a problem in Vietnamese.
+# TODO (1): Viết system prompt cho chế độ trả lời TRỰC TIẾP (không có Chain-of-Thought).
+#
+#   Prompt cần:
+#     1. Giao vai trò rõ ràng cho model (agent description).
+#     2. Mô tả đầu vào – bài toán bằng tiếng Việt.
+#     3. Chỉ định định dạng đầu ra – chỉ xuất đáp án số, đặt sau SOLUTION_START.
+#     4. Cấm model giải thích hay trình bày bước làm.
+#
+#   Lưu ý: dùng f-string để nhúng SOLUTION_START / SOLUTION_END vào prompt.
+DIRECT_PROMPT = f"""
+"""
 
-Follow these steps exactly:
-1. Think about the problem step-by-step in Vietnamese.
-2. Place your thought process strictly between {REASONING_START} and {REASONING_END}.
-3. Provide ONLY your final numerical answer between {SOLUTION_START} and {SOLUTION_END}."""
+# TODO (2): Viết system prompt cho chế độ Chain-of-Thought (CoT).
+#
+#   Prompt cần:
+#     1. Giao vai trò như TODO (1).
+#     2. Yêu cầu model suy luận từng bước bằng tiếng Việt TRƯỚC khi đưa ra đáp án.
+#     3. Phần suy luận phải được bọc giữa REASONING_START và REASONING_END.
+#     4. Đáp án số cuối cùng đặt sau SOLUTION_START (và trước SOLUTION_END nếu có).
+#
+#   Gợi ý cấu trúc:
+#     [Vai trò]
+#     [Mô tả đầu vào]
+#     Bước 1 – Suy luận: đặt trong {REASONING_START} ... {REASONING_END}
+#     Bước 2 – Đáp án:   đặt sau {SOLUTION_START}
+COT_PROMPT = f"""
+"""
