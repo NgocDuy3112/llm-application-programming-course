@@ -1,7 +1,12 @@
 """Configuration constants and pipeline builder for CoT evaluation."""
+import os
+
 import torch
+from dotenv import load_dotenv
 from huggingface_hub import login
 from transformers import pipeline
+
+load_dotenv()
 
 try:
     from google.colab import userdata
@@ -28,13 +33,13 @@ REPETITION_PENALTY = 1.1
 
 
 def get_hf_token():
-    """Get HuggingFace token from Colab Secrets or user input."""
+    """Get HuggingFace token from .env, Colab Secrets, or environment."""
     if IS_COLAB:
         try:
             return userdata.get("HF_TOKEN")
         except Exception:
-            return None
-    return None
+            pass
+    return os.getenv("HF_TOKEN")
 
 
 def build_pipeline():
