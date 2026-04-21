@@ -1,7 +1,3 @@
-"""System prompts and formatting markers for CoT evaluation."""
-
-from textwrap import dedent
-
 # --- Markers for prompt formatting ---
 # Keep these marker variables as-is; students do not need to change them.
 SOLUTION_START = "####"
