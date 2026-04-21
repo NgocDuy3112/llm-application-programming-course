@@ -1,5 +1,8 @@
 import gc
 import torch
+from transformers import logging as hf_logging
+
+hf_logging.set_verbosity_error()
 
 from src.config import (
     DATASET_FILE_PATH,
@@ -47,12 +50,10 @@ def run():
         ground_truths = list(batch["ground_truth"])
 
         # Generate responses: no-CoT and with-CoT
-        print(f"   Batch {batch_idx}: Generating no-CoT responses...")
         no_cot_texts = generate_text_with_prompt(
             pipe, queries, DIRECT_PROMPT, batch_size=BATCH_SIZE
         )
 
-        print(f"   Batch {batch_idx}: Generating CoT responses...")
         cot_texts = generate_text_with_prompt(
             pipe, queries, COT_PROMPT, batch_size=BATCH_SIZE
         )
