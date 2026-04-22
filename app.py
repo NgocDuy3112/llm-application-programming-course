@@ -55,7 +55,7 @@ def get_adapter(provider: Provider) -> BaseAdapter:
     giúp tiết kiệm tài nguyên và tăng tốc độ phản hồi.
 
     Args:
-        provider (Provider): Nhà cung cấp LLM (GROQ hoặc OLLAMA)
+        provider (Provider): Nhà cung cấp LLM (GROQ hoặc CEREBRAS)
 
     Returns:
         BaseAdapter: Adapter đã khởi tạo cho provider
@@ -68,9 +68,6 @@ def get_adapter(provider: Provider) -> BaseAdapter:
         case Provider.GROQ:
             global_logger.info("Using Groq adapter for cloud-based inference")
             return GroqAdapter()
-        case Provider.OLLAMA:
-            global_logger.info("Using Ollama adapter for local inference")
-            return OllamaAdapter()
         case Provider.CEREBRAS:
             global_logger.info("Using Cerebras adapter for cloud-based inference")
             return CerebrasAdapter()

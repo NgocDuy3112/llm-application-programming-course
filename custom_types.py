@@ -27,7 +27,6 @@ class Provider(Enum):
         OLLAMA: Local inference qua Ollama server (riêng tư, offline)
     """
     GROQ = 'groq'
-    OLLAMA = 'ollama'
     CEREBRAS = 'cerebras'
 
 
@@ -52,13 +51,9 @@ MODELS_BY_PROVIDER = {
         "moonshotai/kimi-k2-instruct-0905",
         "qwen/qwen3-32b"
     ],
-    Provider.OLLAMA.value: [
-        "qwen3:0.6b-q4_K_M",      # 4-bit quantized (smaller, faster)
-        "qwen3:0.6b-q8_0",        # 8-bit quantized (balanced)
-        "qwen3:0.6b-fp16",        # Full 16-bit precision (highest quality)
-    ],
     Provider.CEREBRAS.value: [
         "llama3.1-8b",
-        "qwen-3-235b-a22b-instruct-2507"
+        "qwen-3-235b-a22b-instruct-2507",
+        "zai-glm-4.7"
     ]
 }

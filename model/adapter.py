@@ -47,26 +47,17 @@ class GroqAdapter(BaseAdapter):
         )
 
 
-class OllamaAdapter(BaseAdapter):
-    """Adapter cho Ollama - local LLM server."""
-
-    def _initialize_client(self):
-        # TODO(BT1-Ollama): Tạo OpenAI client cho Ollama local
-        # - base_url="http://localhost:11434/v1"
-        # - api_key="ollama" (placeholder, không cần thật)
-        global_logger.info("Khởi tạo Ollama client...")
-        return OpenAI(
-            base_url="http://localhost:11434/v1",
-            api_key="ollama"
-        )
-
-
 class CerebrasAdapter(BaseAdapter):
     """Adapter cho Cerebras - cloud LLM provider."""
 
     def _initialize_client(self):
         global_logger.info("Khởi tạo Cerebras client...")
         api_key = os.getenv("CEREBRAS_API_KEY")
+        if not api_key:
+            raise ValueError(
+                "CEREBRAS_API_KEY environment variable not set. "
+                "Please set your Cerebras API key by creating a .env file with: CEREBRAS_API_KEY=your_key_here"
+            )
         return OpenAI(
             base_url="https://api.cerebras.ai/v1",
             api_key=api_key

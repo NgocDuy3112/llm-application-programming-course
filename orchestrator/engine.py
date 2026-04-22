@@ -17,21 +17,10 @@ class ChatbotEngine:
 
     Attributes:
         adapter (BaseAdapter): LLM adapter instance
-        memory (WindowMemory | None): Memory manager instance
-
-    Example:
-        >>> engine = EngineFull(
-        ...     adapter=GroqAdapter()
-        ... )
-        >>> response = engine.response(
-        ...     model="qwen/qwen3-32b",
-        ...     user_prompt="What's the weather today?",
-        ...     tools=DEFAULT_TOOLS,
-        ...     tool_choice=ToolChoice.AUTO
-        ... )
+        memory (SlidingWindowMemory | None): Memory manager instance
     """
 
-    def __init__(self, adapter: BaseAdapter, memory: SlidingWindowMemory):
+    def __init__(self, adapter: BaseAdapter, memory: SlidingWindowMemory | None = None):
         """
         Khởi tạo engine với adapter và memory.
 
