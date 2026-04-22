@@ -54,6 +54,5 @@ MODELS_BY_PROVIDER = {
     Provider.CEREBRAS.value: [
         "llama3.1-8b",
         "qwen-3-235b-a22b-instruct-2507",
-        "zai-glm-4.7"
     ]
 }
