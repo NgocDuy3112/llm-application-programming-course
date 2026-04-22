@@ -1,8 +1,5 @@
 import gc
 import torch
-from transformers import logging as hf_logging
-
-hf_logging.set_verbosity_error()
 
 from src.config import (
     DATASET_FILE_PATH,
@@ -37,33 +34,50 @@ def run():
     print(f"   Model: {MODEL_ID}")
     print(f"   Device: {'GPU' if torch.cuda.is_available() else 'CPU'}\n")
 
-    # --- Run evaluation ---
-    print("3. Running batch evaluation...")
-    print(f"   Total samples: {len(ds)}, Batch size: {BATCH_SIZE}\n")
+    # --- Run evaluation (single batch) ---
+    print("3. Running evaluation on all samples in a single batch...")
+    print(f"   Total samples: {len(ds)}\n")
 
-    # Process batches
-    for batch_idx, start in enumerate(range(0, len(ds), BATCH_SIZE), start=1):
-        end = min(start + BATCH_SIZE, len(ds))
-        batch = ds.select(range(start, end))
+    # Counters for overall accuracy
+    total_evaluated = 0
+    total_correct_no = 0
+    total_correct_cot = 0
 
-        queries = list(batch["query_vi"])
-        ground_truths = list(batch["ground_truth"])
+    if len(ds) == 0:
+        print("   No samples to evaluate.")
+    else:
+        # Prepare all queries at once
+        queries = list(ds["query_vi"])
+        ground_truths = list(ds["ground_truth"])
 
-        # Generate responses: no-CoT and with-CoT
+        # Generate responses for all queries in one call each
+        print("   Generating no-CoT responses for all samples...")
         no_cot_texts = generate_text_with_prompt(
-            pipe, queries, DIRECT_PROMPT, batch_size=BATCH_SIZE
+            pipe, queries, DIRECT_PROMPT, batch_size=len(queries)
         )
 
+        print("   Generating CoT responses for all samples...")
         cot_texts = generate_text_with_prompt(
-            pipe, queries, COT_PROMPT, batch_size=BATCH_SIZE
+            pipe, queries, COT_PROMPT, batch_size=len(queries)
         )
 
         for idx, (q, gt, no_text, cot_text) in enumerate(
-            zip(queries, ground_truths, no_cot_texts, cot_texts),
-            start=start + 1,
+            zip(queries, ground_truths, no_cot_texts, cot_texts), start=1
         ):
+            # Trích xuất đáp án số từ output (chỉ chấp nhận marker ####)
             ans_no = extract_answer(no_text)
             ans_cot = extract_answer(cot_text)
+
+            gt_str = (gt or "").strip()
+            ans_no_str = (ans_no or "").strip()
+            ans_cot_str = (ans_cot or "").strip()
+
+            match_no = ans_no_str == gt_str
+            match_cot = ans_cot_str == gt_str
+
+            total_correct_no += int(match_no)
+            total_correct_cot += int(match_cot)
+            total_evaluated += 1
 
             print(f"   Sample {idx}")
             print(f"     query_vi: {q}")
@@ -80,6 +94,16 @@ def run():
     # --- Summary ---
     print("\n4. Final Summary")
     print(f"   Total samples processed: {len(ds)}")
+    if total_evaluated > 0:
+        acc_no = total_correct_no / total_evaluated * 100
+        acc_cot = total_correct_cot / total_evaluated * 100
+    else:
+        acc_no = acc_cot = 0.0
+
+    print(f"   Accuracy (No CoT): {acc_no:.2f}% ({total_correct_no}/{total_evaluated})")
+    print(f"   Accuracy (With CoT): {acc_cot:.2f}% ({total_correct_cot}/{total_evaluated})")
+    print(f"   Improvement: {acc_cot - acc_no:+.2f}%")
+
     print("\n=== Evaluation Complete ===")
 
 
