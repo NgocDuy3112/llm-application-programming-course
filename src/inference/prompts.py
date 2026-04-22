@@ -1,11 +1,8 @@
-# --- Markers for prompt formatting ---
-# Keep these marker variables as-is; students do not need to change them.
 SOLUTION_START = "####"
 SOLUTION_END = ""
 REASONING_START = "<thought>"
 REASONING_END = "</thought>"
 
-# --- System prompts for direct (no CoT) and CoT modes ---
 
 # TODO (1): Viết system prompt cho chế độ trả lời TRỰC TIẾP (không có Chain-of-Thought).
 #

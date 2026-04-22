@@ -61,6 +61,7 @@ def run():
             zip(queries, ground_truths, no_cot_texts, cot_texts),
             start=start + 1,
         ):
+            # TODO: Lấy kết quả số cuối cùng từ no_text và cot_text bằng cách dùng hàm extract_answer.
             ans_no = extract_answer(no_text)
             ans_cot = extract_answer(cot_text)
 
