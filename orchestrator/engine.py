@@ -22,7 +22,6 @@ class ChatbotEngine:
         self,
         model: str,
         user_prompt: str,
-        **kwargs
     ):
         """
         Tạo phản hồi cho tin nhắn của người dùng.
