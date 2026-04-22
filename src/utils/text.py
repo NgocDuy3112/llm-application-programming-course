@@ -22,11 +22,6 @@ def extract_answer(text: str) -> str:
     if m:
         return m.group(1).replace(",", "")
 
-    # Pattern: "The answer is {number}"
-    m = re.search(r"[Tt]he answer is\s*([+-]?[\d,]+(?:\.\d+)?)", text)
-    if m:
-        return m.group(1).replace(",", "")
-
     # Fallback: extract last number in text
     nums = re.findall(r"[+-]?[\d,]+(?:\.\d+)?", text)
     return nums[-1].replace(",", "") if nums else ""
