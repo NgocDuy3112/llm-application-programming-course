@@ -59,3 +59,15 @@ class OllamaAdapter(BaseAdapter):
             base_url="http://localhost:11434/v1",
             api_key="ollama"
         )
+
+
+class CerebrasAdapter(BaseAdapter):
+    """Adapter cho Cerebras - cloud LLM provider."""
+
+    def _initialize_client(self):
+        global_logger.info("Khởi tạo Cerebras client...")
+        api_key = os.getenv("CEREBRAS_API_KEY")
+        return OpenAI(
+            base_url="https://api.cerebras.ai/v1",
+            api_key=api_key
+        )

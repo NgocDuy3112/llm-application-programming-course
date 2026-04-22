@@ -28,6 +28,7 @@ class Provider(Enum):
     """
     GROQ = 'groq'
     OLLAMA = 'ollama'
+    CEREBRAS = 'cerebras'
 
 
 class ContextManagementMode(Enum):
@@ -56,4 +57,8 @@ MODELS_BY_PROVIDER = {
         "qwen3:0.6b-q8_0",        # 8-bit quantized (balanced)
         "qwen3:0.6b-fp16",        # Full 16-bit precision (highest quality)
     ],
+    Provider.CEREBRAS.value: [
+        "llama3.1-8b",
+        "qwen-3-235b-a22b-instruct-2507"
+    ]
 }

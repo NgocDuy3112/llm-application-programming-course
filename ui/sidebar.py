@@ -37,7 +37,8 @@ def render_sidebar():
         label="Chọn nhà cung cấp mô hình",
         options=[
             Provider.GROQ.value,
-            Provider.OLLAMA.value
+            Provider.OLLAMA.value,
+            Provider.CEREBRAS.value
         ],
         index=0,
         key="selected_provider"

@@ -71,6 +71,9 @@ def get_adapter(provider: Provider) -> BaseAdapter:
         case Provider.OLLAMA:
             global_logger.info("Using Ollama adapter for local inference")
             return OllamaAdapter()
+        case Provider.CEREBRAS:
+            global_logger.info("Using Cerebras adapter for cloud-based inference")
+            return CerebrasAdapter()
         case _:
             global_logger.error(f"Unsupported provider: {provider}")
             raise ValueError(f"Không hỗ trợ nhà cung cấp {provider}")
