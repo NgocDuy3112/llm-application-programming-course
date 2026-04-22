@@ -1,1 +1,1 @@
-"""Source package for CoT evaluation pipeline."""
+"""Gói nguồn cho pipeline đánh giá CoT."""

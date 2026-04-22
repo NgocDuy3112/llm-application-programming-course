@@ -5,7 +5,7 @@ from src.config import (
 
 
 def decode_pipe_output(outputs):
-    """Decode outputs from HuggingFace pipeline to list of text strings."""
+    """Giải mã đầu ra từ pipeline HuggingFace thành danh sách chuỗi văn bản."""
     texts = []
     for out in outputs:
         if isinstance(out, dict) and "generated_text" in out:
@@ -20,16 +20,16 @@ def decode_pipe_output(outputs):
 
 
 def generate_text_with_prompt(pipe, prompts, system_prompt: str, batch_size: int = 10):
-    """Generate text using chat template with system prompt.
+    """Sinh văn bản bằng chat template với system prompt.
 
     Args:
-        pipe: HuggingFace pipeline
-        prompts: List of user prompts
-        system_prompt: System message for the model
-        batch_size: Batch size for pipeline
+        pipe: Pipeline HuggingFace
+        prompts: Danh sách prompt của người dùng
+        system_prompt: Thông điệp hệ thống cho mô hình
+        batch_size: Kích thước batch cho pipeline
 
     Returns:
-        List of generated text strings
+        Danh sách chuỗi văn bản được sinh ra
     """
     formatted_prompts = []
     for user_prompt in prompts:

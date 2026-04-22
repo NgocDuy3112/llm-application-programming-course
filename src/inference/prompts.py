@@ -3,13 +3,13 @@ SOLUTION_END = ""
 REASONING_START = "<thought>"
 REASONING_END = "</thought>"
 
-# TODO (1): Viết system prompt cho chế độ trả lời TRỰC TIẾP (không có Chain-of-Thought).
+# TODO (1): Viết system prompt cho chế độ trả lời TRỰC TIẾP (không dùng suy luận từng bước).
 #
 #   Prompt cần:
-#     1. Giao vai trò rõ ràng cho model (agent description).
-#     2. Mô tả đầu vào – bài toán bằng tiếng Việt.
-#     3. Chỉ định định dạng đầu ra – chỉ xuất đáp án số, đặt sau SOLUTION_START.
-#     4. Cấm model giải thích hay trình bày bước làm.
+#     1. Giao vai trò rõ ràng cho mô hình.
+#     2. Mô tả đầu vào là bài toán bằng tiếng Việt.
+#     3. Chỉ định định dạng đầu ra: chỉ xuất đáp án số, đặt sau SOLUTION_START.
+#     4. Cấm mô hình giải thích hay trình bày bước làm.
 #
 #   Lưu ý: dùng f-string để nhúng SOLUTION_START / SOLUTION_END vào prompt.
 DIRECT_PROMPT = f"""
@@ -21,11 +21,11 @@ DIRECT_PROMPT = f"""
     Không giải thích, không trình bày bước làm, không thêm bất kỳ nội dung nào khác.
 """
 
-# TODO (2): Viết system prompt cho chế độ Chain-of-Thought (CoT).
+# TODO (2): Viết system prompt cho chế độ suy luận từng bước (CoT).
 #
 #   Prompt cần:
 #     1. Giao vai trò như TODO (1).
-#     2. Yêu cầu model suy luận từng bước bằng tiếng Việt TRƯỚC khi đưa ra đáp án.
+#     2. Yêu cầu mô hình suy luận từng bước bằng tiếng Việt TRƯỚC khi đưa ra đáp án.
 #     3. Phần suy luận phải được bọc giữa REASONING_START và REASONING_END.
 #     4. Đáp án số cuối cùng đặt sau SOLUTION_START (và trước SOLUTION_END nếu có).
 #
@@ -33,7 +33,7 @@ DIRECT_PROMPT = f"""
 #     [Vai trò]
 #     [Mô tả đầu vào]
 #     Bước 1 – Suy luận: đặt trong {REASONING_START} ... {REASONING_END}
-#     Bước 2 – Đáp án:   đặt sau {SOLUTION_START}
+#     Bước 2 – Đáp án: đặt sau {SOLUTION_START}
 COT_PROMPT = f"""
     Bạn là một trợ lý giải toán cực kỳ chính xác.
     Bạn sẽ nhận được một bài toán bằng tiếng Việt.

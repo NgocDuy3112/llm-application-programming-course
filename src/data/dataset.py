@@ -14,7 +14,7 @@ def _resolve_dataset_path(dataset_path: str) -> Path:
 
 
 def load_dataset_from_excel(dataset_path: str):
-    """Load the local Excel dataset and normalize its columns."""
+    """Tải bộ dữ liệu Excel cục bộ và chuẩn hóa các cột của nó."""
     path = _resolve_dataset_path(dataset_path)
     wb = load_workbook(path, read_only=True, data_only=True)
     ws = wb.active

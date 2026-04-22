@@ -1,1 +1,1 @@
-"""Utility subpackage: text parsing and file I/O."""
+"""Gói tiện ích: phân tích văn bản và I/O tệp."""
