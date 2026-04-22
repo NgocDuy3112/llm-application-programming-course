@@ -4,7 +4,6 @@ import torch
 from src.config import (
     DATASET_FILE_PATH,
     MODEL_ID,
-    BATCH_SIZE,
     build_pipeline,
 )
 from src.inference.prompts import (

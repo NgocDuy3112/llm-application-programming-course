@@ -13,13 +13,10 @@ load_dotenv()
 DATASET_FILE_PATH = "data/sample_dataset.xlsx"
 DATASET_NAME = DATASET_FILE_PATH  # Backward-compatible alias.
 MODEL_ID = "meta-llama/Llama-3.2-1B-Instruct"
-BATCH_SIZE = 5
-PIPE_BATCH_SIZE = 5
 
 # --- Inference Parameters ---
-MAX_NEW_TOKENS = 512
+MAX_NEW_TOKENS = 256
 TEMPERATURE = 0.1  # Lower for math accuracy
-TOP_P = 0.95
 
 
 def get_hf_token():

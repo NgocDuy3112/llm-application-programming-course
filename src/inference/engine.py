@@ -1,7 +1,6 @@
 from src.config import (
     MAX_NEW_TOKENS,
     TEMPERATURE,
-    PIPE_BATCH_SIZE,
 )
 
 
@@ -20,7 +19,7 @@ def decode_pipe_output(outputs):
     return texts
 
 
-def generate_text_with_prompt(pipe, prompts, system_prompt: str, batch_size: int = PIPE_BATCH_SIZE):
+def generate_text_with_prompt(pipe, prompts, system_prompt: str, batch_size: int = 10):
     """Generate text using chat template with system prompt.
 
     Args:
