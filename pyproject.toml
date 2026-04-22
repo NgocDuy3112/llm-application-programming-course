@@ -1,5 +1,5 @@
 [project]
-name = "cot-prompting"
+name = "llm-application-programming-course"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
