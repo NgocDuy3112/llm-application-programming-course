@@ -4,7 +4,6 @@ import torch
 from src.config import (
     DATASET_FILE_PATH,
     MODEL_ID,
-    BATCH_SIZE,
     build_pipeline,
 )
 from src.inference.prompts import (
@@ -17,46 +16,46 @@ from src.inference.engine import generate_text_with_prompt
 
 
 def run():
-    print("=== Starting Evaluation Pipeline ===\n")
+    print("=== Bắt đầu quy trình đánh giá ===\n")
 
-    # --- Load and prepare dataset ---
-    print(f"1. Loading dataset from {DATASET_FILE_PATH}...")
+    # --- Tải và chuẩn bị bộ dữ liệu ---
+    print(f"1. Tải bộ dữ liệu từ {DATASET_FILE_PATH}...")
     ds = load_dataset_from_excel(DATASET_FILE_PATH)
-    print(f"   Dataset loaded with {len(ds)} samples")
-    print("   Using the prepared 15-row dataset directly; no further sampling.\n")
+    print(f"   Số mẫu trong bộ dữ liệu: {len(ds)}")
+    print("   Đang tải dữ liệu...\n")
 
-    # Add ground truth extracted from response_vi
+    # Thêm nhãn đúng trích xuất từ response_vi
     ds = add_ground_truth(ds)
 
-    # --- Build pipeline ---
-    print("\n2. Building HuggingFace pipeline...")
+    # --- Tạo pipeline ---
+    print("\n2. Gọi pipeline mô hình...")
     pipe = build_pipeline()
-    print(f"   Model: {MODEL_ID}")
-    print(f"   Device: {'GPU' if torch.cuda.is_available() else 'CPU'}\n")
+    print(f"   Mô hình: {MODEL_ID}")
+    print(f"   Thiết bị: {'GPU' if torch.cuda.is_available() else 'CPU'}\n")
 
-    # --- Run evaluation (single batch) ---
-    print("3. Running evaluation on all samples in a single batch...")
-    print(f"   Total samples: {len(ds)}\n")
+    # --- Chạy đánh giá ---
+    print("3. Chạy đánh giá trên toàn bộ mẫu trong một batch...")
+    print(f"   Tổng số mẫu: {len(ds)}\n")
 
-    # Counters for overall accuracy
+    # Bộ đếm độ chính xác tổng thể
     total_evaluated = 0
     total_correct_no = 0
     total_correct_cot = 0
 
     if len(ds) == 0:
-        print("   No samples to evaluate.")
+        print("   Không có mẫu nào để đánh giá.")
     else:
-        # Prepare all queries at once
+        # Chuẩn bị toàn bộ câu hỏi cùng lúc
         queries = list(ds["query_vi"])
         ground_truths = list(ds["ground_truth"])
 
-        # Generate responses for all queries in one call each
-        print("   Generating no-CoT responses for all samples...")
+        # Sinh câu trả lời cho toàn bộ câu hỏi trong một lần gọi mỗi chế độ
+        print("   Đang tạo câu trả lời không CoT cho tất cả mẫu...")
         no_cot_texts = generate_text_with_prompt(
             pipe, queries, DIRECT_PROMPT, batch_size=len(queries)
         )
 
-        print("   Generating CoT responses for all samples...")
+        print("   Đang tạo câu trả lời CoT cho tất cả mẫu...")
         cot_texts = generate_text_with_prompt(
             pipe, queries, COT_PROMPT, batch_size=len(queries)
         )
@@ -64,47 +63,39 @@ def run():
         for idx, (q, gt, no_text, cot_text) in enumerate(
             zip(queries, ground_truths, no_cot_texts, cot_texts), start=1
         ):
-            # Trích xuất đáp án số từ output (chỉ chấp nhận marker ####)
-            ans_no = extract_answer(no_text)
-            ans_cot = extract_answer(cot_text)
-
+            # TODO[BT2]: Gọi hàm extract_answer để trích xuất đáp án số từ no_text và cot_text.
+            ans_no = ...
+            ans_cot = ...
+            
+            # Chuẩn hóa chuỗi để so sánh (loại bỏ khoảng trắng thừa)
             gt_str = (gt or "").strip()
             ans_no_str = (ans_no or "").strip()
             ans_cot_str = (ans_cot or "").strip()
 
-            match_no = ans_no_str == gt_str
-            match_cot = ans_cot_str == gt_str
+            # TODO[BT2]: Cập nhật bộ đếm độ chính xác tổng thể dựa trên kết quả so sánh vào hai biến total_correct_no và total_correct_cot.
+            # Gợi ý: so sánh gt_str với ans_no_str và ans_cot_str, nếu trùng khớp thì tăng bộ đếm tương ứng lên 1.
 
-            total_correct_no += int(match_no)
-            total_correct_cot += int(match_cot)
             total_evaluated += 1
 
-            print(f"   Sample {idx}")
-            print(f"     query_vi: {q}")
-            print(f"     ground_truth: {gt}")
-            print(f"     non-CoT answer: {ans_no}")
-            print(f"     CoT answer: {ans_cot}")
+            print(f"   Mẫu {idx}")
+            print(f"     câu hỏi_vi: {q}")
+            print(f"     đáp án chuẩn: {gt_str}")
+            print(f"     đáp án không CoT: {ans_no_str}")
+            print(f"     đáp án CoT: {ans_cot_str}")
 
-        # Clean up memory
+        # Dọn dẹp bộ nhớ
         del no_cot_texts, cot_texts
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-    # --- Summary ---
-    print("\n4. Final Summary")
-    print(f"   Total samples processed: {len(ds)}")
-    if total_evaluated > 0:
-        acc_no = total_correct_no / total_evaluated * 100
-        acc_cot = total_correct_cot / total_evaluated * 100
-    else:
-        acc_no = acc_cot = 0.0
+    # --- Tóm tắt ---
+    print("\n4. Tóm tắt cuối cùng")
+    print(f"   Tổng số mẫu đã xử lý: {len(ds)}")
+    # TODO[BT2]: Tính toán độ chính xác cho cả hai chế độ và in ra kết quả cuối cùng.
+    
 
-    print(f"   Accuracy (No CoT): {acc_no:.2f}% ({total_correct_no}/{total_evaluated})")
-    print(f"   Accuracy (With CoT): {acc_cot:.2f}% ({total_correct_cot}/{total_evaluated})")
-    print(f"   Improvement: {acc_cot - acc_no:+.2f}%")
-
-    print("\n=== Evaluation Complete ===")
+    print("\n=== Hoàn tất đánh giá ===")
 
 
 if __name__ == "__main__":

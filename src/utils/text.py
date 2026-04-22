@@ -2,25 +2,25 @@ import re
 
 
 def extract_answer(text: str) -> str:
-    """Extract the answer number from the response text.
+    """Trích xuất đáp án số từ văn bản phản hồi.
 
-    Prefer the final `####{answer}` pattern, then fallback to other numeric forms.
+    Ưu tiên mẫu `####{đáp án}` ở cuối văn bản, sau đó mới thử các dạng số khác.
     """
-    # Pattern: ####{number} at end of text (highest priority)
+    # Mẫu: ####{số} ở cuối văn bản (ưu tiên cao nhất)
     m = re.search(r"####\s*([+-]?[\d,]+(?:\.\d+)?)\s*$", text)
     if m:
         return m.group(1).replace(",", "")
 
-    # Pattern: ####{number} anywhere in text
+    # Mẫu: ####{số} ở bất kỳ vị trí nào trong văn bản
     m = re.search(r"####\s*([+-]?[\d,]+(?:\.\d+)?)", text)
     if m:
         return m.group(1).replace(",", "")
 
-    # Pattern: "Đáp án là: {number}"
+    # Mẫu: "Đáp án là: {số}"
     m = re.search(r"Đáp án là:\s*([+-]?[\d,]+(?:\.\d+)?)", text)
     if m:
         return m.group(1).replace(",", "")
 
-    # Fallback: extract last number in text
+    # Phương án dự phòng: lấy số cuối cùng trong văn bản
     nums = re.findall(r"[+-]?[\d,]+(?:\.\d+)?", text)
     return nums[-1].replace(",", "") if nums else ""

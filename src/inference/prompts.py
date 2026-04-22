@@ -4,9 +4,9 @@ REASONING_START = "<thought>"
 REASONING_END = "</thought>"
 
 
-# TODO (1): Viết system prompt cho chế độ trả lời TRỰC TIẾP (không có Chain-of-Thought).
+# TODO[BT1a]: Viết system prompt cho chế độ trả lời TRỰC TIẾP (không có Chain-of-Thought).
 #
-#   Prompt cần:
+#   Yêu cầu:
 #     1. Giao vai trò rõ ràng cho model (agent description).
 #     2. Mô tả đầu vào – bài toán bằng tiếng Việt.
 #     3. Chỉ định định dạng đầu ra – chỉ xuất đáp án số, đặt sau SOLUTION_START.
@@ -16,9 +16,9 @@ REASONING_END = "</thought>"
 DIRECT_PROMPT = f"""
 """
 
-# TODO (2): Viết system prompt cho chế độ Chain-of-Thought (CoT).
+# TODO[BT1b]: Viết system prompt cho chế độ Chain-of-Thought (CoT).
 #
-#   Prompt cần:
+#   Yêu cầu:
 #     1. Giao vai trò như TODO (1).
 #     2. Yêu cầu model suy luận từng bước bằng tiếng Việt TRƯỚC khi đưa ra đáp án.
 #     3. Phần suy luận phải được bọc giữa REASONING_START và REASONING_END.
