@@ -150,6 +150,8 @@ def get_rag() -> SimpleRAG:
         cross_encoder_model_name=os.getenv("CROSS_ENCODER_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2"),
         # Đường dẫn lưu ChromaDB từ environment variable, default là "./chroma_db"
         chroma_path=os.getenv("CHROMA_DB_PATH", "./chroma_db"),
+        chunk_size=1500,
+        chunk_overlap=200,
     )
 
 

@@ -60,9 +60,9 @@ class SimpleRAG:
     # Constructor của SimpleRAG class
     def __init__(
         self,
-        collection_name: str = "knowledge_base",  # Tên collection trong ChromaDB
-        embedding_model_name: str = "AITeamVN/Vietnamese_Embedding_v2",  # Model embedding
-        cross_encoder_model_name: str = "cross-encoder/ms-marco-MiniLM-L-6-v2",  # Model reranking
+        collection_name: str ,  # Tên collection trong ChromaDB
+        embedding_model_name: str ,  # Model embedding
+        cross_encoder_model_name: str,  # Model reranking
         chroma_path: str = "./chroma_db",  # Đường dẫn lưu ChromaDB
         chunk_size: int = 1500,  # Kích thước mỗi chunk (ký tự)
         chunk_overlap: int = 200,  # Số ký tự chồng lấp giữa các chunk
