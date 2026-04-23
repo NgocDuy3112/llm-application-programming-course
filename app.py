@@ -1,15 +1,3 @@
-"""
-Module 5 - Main Chatbot Application
-
-Mô tả: Streamlit application chính cho demo chatbot. Ứng dụng này tích hợp
-các thành phần:
-- UI components (sidebar, chat interface)
-- Model adapters (Groq, Ollama)
-
-Cách chạy:
-   streamlit run app.py
-"""
-
 import os
 import sys
 import streamlit as st
