@@ -72,7 +72,8 @@ def run():
             ans_no_str = (ans_no or "").strip()
             ans_cot_str = (ans_cot or "").strip()
 
-            # TODO[BT2]: Cập nhật bộ đếm độ chính xác tổng thể dựa trên kết quả so sánh vào hai biến total_correct_no và total_correct_cot.
+            # TODO[BT2]: Cập nhật bộ đếm độ chính xác tổng thể dựa trên kết quả so sánh 
+            # vào hai biến total_correct_no và total_correct_cot.
             # Gợi ý: so sánh gt_str với ans_no_str và ans_cot_str, nếu trùng khớp thì tăng bộ đếm tương ứng lên 1.
 
             total_evaluated += 1
