@@ -50,7 +50,7 @@ class FullChatbotEngine:
         tools: list | None = None,
         tool_choice: ToolChoice = ToolChoice.NONE,
         temperature: float = 0.2,
-        max_tokens: int = 8000,
+        max_tokens: int = 65536,
         **kwargs
     ) -> str:
         global_logger.info(f"Processing user input: {user_prompt[:50]}...")
@@ -115,24 +115,12 @@ class FullChatbotEngine:
                     global_logger.warning(f"Unknown tool: {tool_name}")
                     tool_response = f"Unknown tool: {tool_name}"
 
-                # Nếu tool là knowledge_base_search: inject RAG context vào system message
-                # thay vì trả về trong tool response (tránh gửi context lớn lần 2 cho LLM)
-                if tool_name == "knowledge_base_search" and not str(tool_response).startswith("Error"):
-                    if messages and messages[0]["role"] == "system":
-                        messages[0] = {
-                            "role": "system",
-                            "content": messages[0]["content"] + f"\n\n## Thông tin từ Knowledge Base:\n{tool_response}"
-                        }
-                    tool_response_content = "Đã tải thông tin từ knowledge base vào context hệ thống."
-                else:
-                    tool_response_content = str(tool_response)
-
                 # Append tool response vào messages (không lưu vào memory)
                 messages.append({
                     "role": "tool",
                     "tool_call_id": tool_call.id,
                     "name": tool_call.function.name,
-                    "content": tool_response_content
+                    "content": str(tool_response)
                 })
 
             # Continue loop - messages đã có tool responses, không rebuild từ memory

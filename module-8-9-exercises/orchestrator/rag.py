@@ -25,8 +25,8 @@ class SimpleRAG:
     Class đơn giản thực hiện toàn bộ pipeline RAG.
 
     Workflow:
-        1. add_documents() → đọc file → chunk → embed → lưu ChromaDB
-        2. retrieve() → embed query → search ChromaDB → rerank → trả về context
+        1. add_documents(): đọc file → chunk → embed → lưu ChromaDB
+        2. retrieve(): embed query → search ChromaDB → rerank → trả về context
     """
 
     def __init__(
@@ -70,11 +70,6 @@ class SimpleRAG:
         """
         Đọc và chuyển đổi file upload sang Markdown (Streamlit UploadedFile).
 
-        Workflow:
-            1. Lưu file tạm ra ổ đĩa (markitdown cần file path)
-            2. Dùng MarkItDown convert sang Markdown
-            3. Xóa file tạm
-
         Hỗ trợ: .txt, .md, .pdf, .docx, .pptx, .xlsx, .html
 
         Args:
@@ -83,11 +78,6 @@ class SimpleRAG:
         Returns:
             str: Nội dung Markdown của file
 
-        Gợi ý:
-            - Dùng os.path.splitext(file.name)[1] để lấy đuôi file
-            - Dùng tempfile.NamedTemporaryFile(delete=False, suffix=...) để tạo file tạm
-            - Dùng self.markitdown.convert(path).text_content để lấy nội dung
-            - Dùng os.unlink(path) trong finally để xóa file tạm
         """
         # YOUR CODE HERE
         raise NotImplementedError("TODO: Implement load_document()")

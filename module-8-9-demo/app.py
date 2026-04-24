@@ -150,8 +150,6 @@ def get_rag() -> SimpleRAG:
         cross_encoder_model_name=os.getenv("CROSS_ENCODER_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2"),
         # Đường dẫn lưu ChromaDB từ environment variable, default là "./chroma_db"
         chroma_path=os.getenv("CHROMA_DB_PATH", "./chroma_db"),
-        chunk_size=1500,
-        chunk_overlap=200,
     )
 
 
@@ -195,8 +193,8 @@ def main():
     
     # Kiểm tra nếu "selected_model" chưa tồn tại trong session_state
     if "selected_model" not in st.session_state:
-        # Khởi tạo model mặc định là "llama-3.3-70b-versatile"
-        st.session_state.selected_model = "llama-3.3-70b-versatile"
+        # Khởi tạo model mặc định là "openai/gpt-oss-20b"
+        st.session_state.selected_model = "openai/gpt-oss-20b"
 
     # Khởi tạo RAG instance và đưa vào session_state + tools module
     
@@ -213,13 +211,6 @@ def main():
     # Tạo chatbot engine instance với provider đã chọn
     # Provider(st.session_state.selected_provider) convert string thành Provider enum
     engine = get_chatbot_engine(Provider(st.session_state.selected_provider))
-
-    # Cấu hình LLM keyword extractor cho BM25 search trong RAG
-    # Dùng cùng adapter và model đang chọn để extract keywords trước khi BM25
-    rag.set_keyword_extractor(
-        adapter=engine.adapter,
-        model=st.session_state.selected_model,
-    )
     
     # Render sidebar với các cài đặt chatbot
     render_sidebar()

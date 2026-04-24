@@ -12,7 +12,7 @@ sentence-transformers
 langchain-text-splitters
 pypdf
 python-docx
-markitdown[pdf]
+markitdown[all]
 rank_bm25
 
 # RAGAS evaluation
