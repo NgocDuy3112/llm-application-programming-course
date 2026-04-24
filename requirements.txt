@@ -1,0 +1,24 @@
+# Hugging Face
+transformers
+accelerate
+# LLM APIs
+openai
+python-dotenv
+
+# Tokenization
+tiktoken
+
+# Embeddings and ML
+sentence-transformers
+numpy
+scikit-learn
+
+# Data Processing
+pandas
+
+# Visualization
+matplotlib
+seaborn
+# Jupyter Notebook (nếu cần)
+jupyter
+ipykernel
