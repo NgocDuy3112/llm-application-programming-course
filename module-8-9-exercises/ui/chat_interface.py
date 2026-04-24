@@ -14,38 +14,51 @@ from logger import global_logger
 from custom_types import ToolChoice
 
 
-# ================================================================
-# TODO 1: Implement helper function
-# ================================================================
-
+# Hàm helper để hiển thị tài liệu tham khảo từ kết quả RAG retrieval
 def _render_retrieved_docs(docs_str: str):
     """
     Hiển thị tài liệu tham khảo từ kết quả RAG retrieval trong expander.
 
-    Args:
-        docs_str (str): Context string từ RAG.
-            Format: "[Tài liệu 1 — 📄 file.pdf]\nnội dung...\n\n---\n\n[Tài liệu 2 ...]..."
+    Format context string từ RAG: mỗi tài liệu được phân cách bằng "\n\n---\n\n"
+    và có header chứa source file.
 
-    Các bước cần làm:
-        1. Tách: chunks = docs_str.split("\n\n---\n\n")
-        2. Tạo expander:
-               st.expander("📚 Tài liệu tham khảo ({} đoạn)".format(len(chunks)), expanded=False)
-        3. Lặp qua từng chunk:
-               lines = chunk.strip().split("\n", 1)
-               header = lines[0].strip()
-               body   = lines[1].strip() if len(lines) > 1 else chunk.strip()
-        4. Hiển thị header: st.markdown("**{}**".format(header))
-        5. Hiển thị body trong thẻ div có border-left màu xanh lá:
-               st.markdown(
-                   "<div style='background:#f8f9fa;border-left:3px solid #4CAF50;"
-                   "padding:8px 12px;border-radius:4px;font-size:0.9em;"
-                   "white-space:pre-wrap;'>{}</div>".format(body),
-                   unsafe_allow_html=True,
-               )
-        6. st.divider()
+    Args:
+        docs_str (str): Context string từ RAG retrieve, format:
+            "[Tài liệu 1 — 📄 source.pdf]\ncontent...\n\n---\n\n[Tài liệu 2 — 📄 doc.docx]\ncontent..."
     """
-    # YOUR CODE HERE
-    raise NotImplementedError("TODO 1: Implement _render_retrieved_docs()")
+    # Tách context string thành từng chunks dựa trên delimiter "\n\n---\n\n"
+    # Kết quả trả về là list các chunk strings
+    chunks = docs_str.split("\n\n---\n\n")
+
+    # Tạo expander (collapsible section) để hiển thị tài liệu tham khảo
+    # expanded=False nghĩa là mặc định sẽ đóng
+    # Dùng .format thay cho f-string để tương thích với yêu cầu
+    with st.expander(f"📚 Tài liệu tham khảo ({len(chunks)}) đoạn", expanded=False):
+        # Lặp qua từng chunk trong danh sách chunks
+        for chunk in chunks:
+            # Tách chunk thành 2 phần: header (dòng đầu) và body (phần còn lại)
+            # split("\n", 1) chỉ tách tại dấu newline đầu tiên
+            lines = chunk.strip().split("\n", 1)
+            
+            # Lấy dòng đầu tiên làm header (thông tin source file)
+            header = lines[0].strip()
+
+            # Lấy phần còn lại làm body (nội dung chunk)
+            # Nếu chỉ có 1 dòng (không có newline), dùng toàn bộ chunk
+            body = lines[1].strip() if len(lines) > 1 else chunk.strip()
+
+            # Hiển thị header với format đậm (dùng .format thay f-string)
+            st.markdown(f"**{header}**")
+
+            # Hiển thị body với custom CSS styling; đặt body vào template bằng f-string
+            html = (f"<div style='background:#f8f9fa;border-left:3px solid #4CAF50;"
+                    "padding:8px 12px;border-radius:4px;font-size:0.9em;"
+                    f"white-space:pre-wrap;'>{body}</div>")
+            st.markdown(html, unsafe_allow_html=True)
+            
+            # Tạo đường kẻ ngang phân cách giữa các chunks
+            st.divider()
+
 
 
 # ================================================================
@@ -65,7 +78,7 @@ def render_chat_interface(engine: object):
         for i, entry in enumerate(st.session_state.chat_history):
             with st.chat_message(entry["role"]):
                 st.markdown(entry["content"])
-                # TODO 2: Nếu message index i có trong retrieved_docs_map,
+                # TODO 4g: Nếu message index i có trong retrieved_docs_map,
                 #         gọi _render_retrieved_docs() với nội dung tương ứng.
                 # Gợi ý: if i in st.session_state.retrieved_docs_map:
                 #               _render_retrieved_docs(st.session_state.retrieved_docs_map[i])
@@ -95,7 +108,7 @@ def render_chat_interface(engine: object):
 
         with st.chat_message("assistant"):
             st.markdown(assistant_reply)
-            # TODO 3: Nếu retrieved_docs tồn tại,
+            # TODO 4h: Nếu retrieved_docs tồn tại,
             #         gọi _render_retrieved_docs(retrieved_docs)
             # YOUR CODE HERE
 

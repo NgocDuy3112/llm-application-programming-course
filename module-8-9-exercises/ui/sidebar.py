@@ -74,7 +74,7 @@ def render_sidebar():
     # Lấy RAG instance từ session_state (do app.py set vào)
     rag = st.session_state.get("rag")
 
-    # TODO 1: Hiển thị số chunks hiện có
+    # TODO 3b: Hiển thị số chunks hiện có
     # Gợi ý:
     #   chunk_count = rag.doc_count()
     #   Nếu > 0 → st.sidebar.info("📄 {} chunks trong Knowledge Base".format(chunk_count))
@@ -83,7 +83,7 @@ def render_sidebar():
         # YOUR CODE HERE
         pass
 
-    # TODO 2: File uploader
+    # TODO 2b: File uploader
     # Gợi ý:
     #   uploaded_files = st.sidebar.file_uploader(
     #       label="Upload tài liệu",
@@ -93,31 +93,31 @@ def render_sidebar():
     #   )
     # YOUR CODE HERE
 
-    # TODO 3: Nút "Thêm tài liệu vào KB"
+    # TODO 3c: Nút "Thêm tài liệu vào KB"
     # Gợi ý:
-    #   if st.sidebar.button("📥 Thêm tài liệu vào KB", use_container_width=True):
+    #   if st.sidebar.button("Thêm tài liệu vào KB", use_container_width=True):
     #       - Kiểm tra uploaded_files và rag tồn tại
     #       - với st.spinner(): gọi rag.add_documents(uploaded_files)
     #       - Hiển thị st.sidebar.success() hoặc st.sidebar.error()
     # YOUR CODE HERE
 
-    # TODO 4: Danh sách file + xóa từng file
+    # TODO 3d: Danh sách file + xóa từng file
     # Gợi ý:
     #   if rag and rag.doc_count() > 0:
     #       sources = rag.list_sources()  → [{"source": "file.pdf", "chunk_count": 10}, ...]
-    #       with st.sidebar.expander("📁 Tài liệu ({} file)".format(len(sources))):
+    #       with st.sidebar.expander("Tài liệu ({} file)".format(len(sources))):
     #           for item in sources:
     #               col1, col2 = st.columns([3, 1])
     #               col1: st.caption("📄 {} ({} chunks)".format(source, count))
-    #               col2: if st.button("🗑️", key="del_{}".format(source)):
+    #               col2: if st.button(key="del_{}".format(source)):
     #                         rag.delete_source(item["source"])
     #                         st.rerun()
     # YOUR CODE HERE
 
-    # TODO 5: Nút xóa toàn bộ KB
+    # TODO 3e: Nút xóa toàn bộ KB
     # Gợi ý:
     #   if rag and rag.doc_count() > 0:
-    #       if st.sidebar.button("🗑️ Xóa toàn bộ Knowledge Base", use_container_width=True):
+    #       if st.sidebar.button("Xóa toàn bộ Knowledge Base", use_container_width=True):
     #           rag.clear()
     #           st.rerun()
     # YOUR CODE HERE

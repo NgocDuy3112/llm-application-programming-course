@@ -63,7 +63,7 @@ class SimpleRAG:
         self.markitdown = MarkItDown()
 
     # ================================================================
-    # 1. ĐỌC TÀI LIỆU
+    # TODO 2a. ĐỌC TÀI LIỆU
     # ================================================================
 
     def load_document(self, file) -> str:
@@ -83,7 +83,7 @@ class SimpleRAG:
         raise NotImplementedError("TODO: Implement load_document()")
 
     # ================================================================
-    # 2. THÊM TÀI LIỆU VÀO KNOWLEDGE BASE
+    # TODO 3a. THÊM TÀI LIỆU VÀO KNOWLEDGE BASE
     # ================================================================
 
     def add_documents(self, files: list) -> int:
@@ -108,7 +108,7 @@ class SimpleRAG:
         raise NotImplementedError("TODO: Implement add_documents()")
 
     # ================================================================
-    # 3. TÌM KIẾM (VECTOR SEARCH)
+    # TODO 4d. TÌM KIẾM (VECTOR SEARCH)
     # ================================================================
 
     def search(self, query: str, top_k: int = 15) -> tuple[list[str], list[dict]]:
@@ -138,7 +138,7 @@ class SimpleRAG:
         raise NotImplementedError("TODO: Implement search()")
 
     # ================================================================
-    # 4. RERANKING
+    # TODO 4e. RERANKING
     # ================================================================
 
     def rerank(self, query: str, documents: list[str], top_k: int = 6) -> list[str]:
@@ -165,7 +165,7 @@ class SimpleRAG:
         raise NotImplementedError("TODO: Implement rerank()")
 
     # ================================================================
-    # 5. RETRIEVE (SEARCH + RERANK + FORMAT)
+    # TODO 4f. RETRIEVE (SEARCH + RERANK + FORMAT)
     # ================================================================
 
     def retrieve(self, query: str, search_top_k: int = 15, rerank_top_k: int = 5) -> str:
@@ -190,11 +190,11 @@ class SimpleRAG:
             - Format: f"[Tài liệu {i} — 📄 {source}]\n{doc}"
             - Join bằng "\n\n---\n\n"
         """
-        # YOUR CODE HERE
+        # TODO 4f: Implement retrieve()
         raise NotImplementedError("TODO: Implement retrieve()")
 
     # ================================================================
-    # 6. UTILITIES (ĐÃ IMPLEMENT SẴN)
+    # UTILITIES (ĐÃ IMPLEMENT SẴN)
     # ================================================================
 
     def doc_count(self) -> int:

@@ -47,7 +47,7 @@ def get_current_date() -> str:
 
 
 # ================================================================
-# TODO 1: Khai báo RAG instance
+# TODO 1a: Khai báo RAG instance
 # ================================================================
 
 # Khai báo biến module-level lưu RAG instance (ban đầu là None)
@@ -70,7 +70,7 @@ def set_rag_instance(rag):
 
 
 # ================================================================
-# TODO 2: Implement knowledge_base_search
+# TODO 4a: Implement knowledge_base_search
 # ================================================================
 
 def knowledge_base_search(query: str) -> str:
@@ -92,11 +92,11 @@ def knowledge_base_search(query: str) -> str:
     """
     global_logger.debug(f"Executing knowledge_base_search with query: {query}")
     # YOUR CODE HERE
-    raise NotImplementedError("TODO 2: Implement knowledge_base_search()")
+    raise NotImplementedError("TODO 4a: Implement knowledge_base_search()")
 
 
 # ================================================================
-# TODO 3: Đăng ký tool
+# TODO 4b: Đăng ký tool
 # ================================================================
 
 # Thêm "knowledge_base_search": knowledge_base_search vào dict này
@@ -130,7 +130,7 @@ DEFAULT_TOOLS = [
             "parameters": {"type": "object", "properties": {}, "required": []},
         }
     },
-    # YOUR CODE HERE — thêm tool spec cho knowledge_base_search
+    # TODO 4c: Thêm tool spec cho knowledge_base_search
     # {
     #     "type": "function",
     #     "function": {

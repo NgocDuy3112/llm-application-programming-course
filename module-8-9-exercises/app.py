@@ -73,7 +73,7 @@ def get_chatbot_engine(provider: Provider) -> FullChatbotEngine:
 
 
 # ================================================================
-# TODO 1: RAG Factory
+# TODO 1b: RAG Factory
 # ================================================================
 
 @st.cache_resource(show_spinner="Đang khởi tạo RAG model...")
@@ -99,7 +99,7 @@ def get_rag():
 
 
 # ================================================================
-# TODO 2: Cập nhật main()
+# TODO 1c: Cập nhật main()
 # ================================================================
 
 def main():
@@ -110,7 +110,7 @@ def main():
     if "selected_model" not in st.session_state:
         st.session_state.selected_model = "openai/gpt-oss-20b"
 
-    # TODO: Khởi tạo RAG và kết nối vào hệ thống
+    # TODO 1c: Khởi tạo RAG và kết nối vào hệ thống
     # Các bước cần làm:
     #   1. rag = get_rag()
     #   2. st.session_state["rag"] = rag    ← để sidebar truy cập được
